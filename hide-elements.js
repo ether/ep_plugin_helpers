@@ -21,4 +21,8 @@ const hideElements = {
   },
 };
 
-module.exports = {hideElements};
+module.exports = {
+  hideCSS: hideElements.css,
+  removeElement: hideElements.remove,
+  hideElements,
+};

@@ -31,4 +31,4 @@ const createMessageRelay = (config) => {
   return {handleMessage};
 };
 
-module.exports = {createMessageRelay};
+module.exports = {messageRelay: createMessageRelay, createMessageRelay};

@@ -140,4 +140,12 @@ const createTagAttribute = (config) => {
   };
 };
 
-module.exports = {createLineAttribute, createInlineAttribute, createTagAttribute};
+module.exports = {
+  lineAttribute: createLineAttribute,
+  inlineAttribute: createInlineAttribute,
+  tagAttribute: createTagAttribute,
+  // Keep old names as aliases for backwards compatibility
+  createLineAttribute,
+  createInlineAttribute,
+  createTagAttribute,
+};

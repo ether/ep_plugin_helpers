@@ -18,4 +18,4 @@ const createSettingsRelay = (pluginName, defaults = {}) => {
   return {loadSettings, clientVars, get};
 };
 
-module.exports = {createSettingsRelay};
+module.exports = {settings: createSettingsRelay, createSettingsRelay};

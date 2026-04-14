@@ -14,4 +14,7 @@ eejsBlock.raw = (htmlString) => (hookName, args, cb) => {
   return cb();
 };
 
-module.exports = {eejsBlock};
+const template = eejsBlock;
+const rawHTML = eejsBlock.raw;
+
+module.exports = {template, rawHTML, eejsBlock};

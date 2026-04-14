@@ -5,4 +5,4 @@ const createLogger = (name) => {
   return log4js.getLogger(name);
 };
 
-module.exports = {createLogger};
+module.exports = {logger: createLogger, createLogger};

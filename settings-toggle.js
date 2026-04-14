@@ -55,4 +55,4 @@ const createSettingsToggle = (config) => {
   return {eejsBlock_mySettings, init};
 };
 
-module.exports = {createSettingsToggle};
+module.exports = {toggle: createSettingsToggle, createSettingsToggle};

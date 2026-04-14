@@ -90,6 +90,10 @@ const createTagAttributeExport = (config) => {
 };
 
 module.exports = {
+  lineAttributeExport: createLineAttributeExport,
+  inlineAttributeExport: createInlineAttributeExport,
+  tagAttributeExport: createTagAttributeExport,
+  // Keep old names as aliases for backwards compatibility
   createLineAttributeExport,
   createInlineAttributeExport,
   createTagAttributeExport,
