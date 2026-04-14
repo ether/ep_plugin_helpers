@@ -30,11 +30,13 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "lint:fix": "eslint --fix ."
+    "lint:fix": "eslint --fix .",
+    "test": "mocha test/ --recursive"
   },
   "devDependencies": {
     "eslint": "^8.57.1",
     "eslint-config-etherpad": "^4.0.4",
+    "mocha": "^11.0.0",
     "typescript": "^6.0.2"
   }
 }
