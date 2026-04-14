@@ -30,6 +30,17 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           npm version patch
           NEW_TAG="v$(node -p "require('./package.json').version")"
+          # Use --atomic so branch + tag succeed or fail together.
+          # If a concurrent run already pushed this tag, the push fails
+          # cleanly and the next run will retry.
           git push --atomic origin "${GITHUB_REF_NAME}" "${NEW_TAG}"
       - name: Publish to npm via OIDC
-        run: npm publish --provenance --access public
+        run: |
+          # Only publish if the version bump succeeded (tag was pushed)
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view ep_plugin_helpers version 2>/dev/null || echo "none")
+          if [ "${CURRENT_VERSION}" = "${PUBLISHED}" ]; then
+            echo "Version ${CURRENT_VERSION} already published, skipping"
+            exit 0
+          fi
+          npm publish --provenance --access public
