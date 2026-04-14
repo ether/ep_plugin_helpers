@@ -53,10 +53,13 @@ const createLineAttribute = (config) => {
     if (cb) return cb();
   };
 
+  const aceRegisterLineAttributes = () => [attr];
+
   return {
     aceAttribsToClasses,
     aceDomLineProcessLineAttributes,
     aceRegisterBlockElements,
+    aceRegisterLineAttributes,
     collectContentPre,
     collectContentPost,
   };
