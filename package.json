@@ -1,6 +1,6 @@
 {
   "name": "ep_plugin_helpers",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Shared factory functions to eliminate boilerplate across Etherpad plugins",
   "author": {
     "name": "John McLear",
