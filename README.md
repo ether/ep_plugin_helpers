@@ -1,4 +1,4 @@
-# ep_plugin_helpers
+# Plugin Helpers for Etherpad Authors
 
 Shared factory functions that eliminate boilerplate across Etherpad plugins.
 
