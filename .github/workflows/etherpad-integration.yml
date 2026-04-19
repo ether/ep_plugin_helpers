@@ -1,0 +1,147 @@
+name: Etherpad Integration
+
+# Boots a real Etherpad against this helper in a matrix of core versions
+# and asserts the pad page renders cleanly. Catches interop regressions
+# (for example the #7543 CJS/ESM settings.toolbar bug) *before* they
+# propagate to every downstream plugin that depends on this helper.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      # Don't cancel sibling versions if one fails — we want the full
+      # compatibility picture in the check output, not just the first red.
+      fail-fast: false
+      matrix:
+        etherpad-ref:
+          # Oldest release we want to stay compatible with (v2.6.1 is the
+          # last tag as of 2026-04; ships the core CJS/ESM interop bug).
+          - v2.6.1
+          # Current development tip (has the #7421 compat shim).
+          - develop
+    name: smoke (etherpad@${{ matrix.etherpad-ref }})
+    steps:
+      - name: Check out this helper
+        uses: actions/checkout@v6
+        with:
+          path: plugin
+
+      - name: Check out Etherpad core (${{ matrix.etherpad-ref }})
+        uses: actions/checkout@v6
+        with:
+          repository: ether/etherpad
+          ref: ${{ matrix.etherpad-ref }}
+          path: etherpad
+
+      - uses: pnpm/action-setup@v6
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: etherpad/pnpm-lock.yaml
+
+      - name: Install Etherpad core dependencies
+        working-directory: ./etherpad
+        run: bin/installDeps.sh
+
+      - name: Install this helper into Etherpad
+        working-directory: ./etherpad
+        run: pnpm run plugins i --path ../../plugin
+
+      - name: Install a representative consumer (ep_font_color)
+        working-directory: ./etherpad
+        # Exercises the template({skip: () => settings.toolbar…}) path that
+        # hit #7543. Installing via the public registry against the helper
+        # we just linked verifies the resolver picks up our copy.
+        run: pnpm run plugins i ep_font_color
+
+      - name: Confirm our helper is the one Etherpad will load
+        working-directory: ./etherpad
+        run: |
+          set -e
+          pkg=$(node -p "require('./node_modules/ep_plugin_helpers/package.json').version")
+          expected=$(node -p "require('../plugin/package.json').version")
+          echo "helper version resolved by Etherpad: $pkg"
+          echo "helper version in this checkout:     $expected"
+          if [ "$pkg" != "$expected" ]; then
+            echo "::error::Etherpad resolved a different ep_plugin_helpers than the one in this PR"
+            exit 1
+          fi
+
+      - name: Start Etherpad in the background
+        working-directory: ./etherpad
+        run: |
+          nohup pnpm run dev > /tmp/etherpad.log 2>&1 &
+          echo $! > /tmp/etherpad.pid
+
+      - name: Wait for Etherpad to listen on :9001
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:9001/ -o /dev/null; then
+              echo "Etherpad up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Etherpad did not start within 60s"
+          tail -200 /tmp/etherpad.log
+          exit 1
+
+      - name: Load a pad and assert HTTP 200
+        # The #7543 symptom was a 500 from eejs rendering the pad template.
+        # A 200 on /p/<id> is the simplest proof that the helper's template
+        # pipeline didn't throw when a consumer plugin is installed.
+        run: |
+          status=$(curl -s -o /tmp/pad.html -w '%{http_code}' http://localhost:9001/p/ci-smoke-$(date +%s))
+          echo "pad status: $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::Pad load returned $status (expected 200)"
+            echo "--- pad body ---"
+            cat /tmp/pad.html
+            echo "--- server log (last 200 lines) ---"
+            tail -200 /tmp/etherpad.log
+            exit 1
+          fi
+
+      - name: Scan server log for uncaught template errors
+        # On the buggy path we saw:
+        #   TypeError: Cannot read properties of undefined (reading 'indexOf')
+        #     at Object.skip (ep_font_color/index.js)
+        # Fail even if the HTTP status happened to stay 200 (e.g. Etherpad
+        # served a cached render or a partial page).
+        run: |
+          if grep -E "Cannot read properties of undefined.*indexOf|TypeError.*eejs" /tmp/etherpad.log; then
+            echo "::error::Detected the #7543 crash pattern in server log"
+            tail -200 /tmp/etherpad.log
+            exit 1
+          fi
+          echo "no template crash pattern in log"
+
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: etherpad-log-${{ matrix.etherpad-ref }}
+          path: /tmp/etherpad.log
+          retention-days: 7
+
+      - name: Stop Etherpad
+        if: always()
+        run: |
+          if [ -f /tmp/etherpad.pid ]; then
+            kill "$(cat /tmp/etherpad.pid)" 2>/dev/null || true
+          fi
