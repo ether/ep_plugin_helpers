@@ -71,10 +71,21 @@ jobs:
 
       - name: Confirm our helper is the one Etherpad will load
         working-directory: ./etherpad
+        # Etherpad installs plugins into src/plugin_packages/, not node_modules/.
+        # Find the package.json wherever the plugin installer put it and
+        # compare its version to the one in this checkout.
         run: |
           set -e
-          pkg=$(node -p "require('./node_modules/ep_plugin_helpers/package.json').version")
+          pkg_path=$(find src/plugin_packages -maxdepth 5 -type f -name package.json \
+                       -path '*ep_plugin_helpers*' 2>/dev/null | head -1)
+          if [ -z "$pkg_path" ]; then
+            echo "::error::could not locate installed ep_plugin_helpers in src/plugin_packages/"
+            find src/plugin_packages -maxdepth 4 -type d | head -30
+            exit 1
+          fi
+          pkg=$(node -p "require('$(pwd)/$pkg_path').version")
           expected=$(node -p "require('../plugin/package.json').version")
+          echo "helper installed at: $pkg_path"
           echo "helper version resolved by Etherpad: $pkg"
           echo "helper version in this checkout:     $expected"
           if [ "$pkg" != "$expected" ]; then
