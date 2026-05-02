@@ -37,6 +37,6 @@
     "eslint": "^8.57.1",
     "eslint-config-etherpad": "^4.0.5",
     "mocha": "^11.0.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   }
 }
