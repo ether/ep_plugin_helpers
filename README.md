@@ -161,7 +161,7 @@ relay.get('option')   // specific key
 
 ### Toggle
 
-Checkbox in the settings panel with cookie persistence.
+Checkbox in the User Settings panel with cookie persistence (per-user, per-pad).
 
 ```js
 const {toggle} = require('ep_plugin_helpers');
@@ -179,6 +179,64 @@ exports.eejsBlock_mySettings = myToggle.eejsBlock_mySettings;
 const state = myToggle.init(); // reads cookie, binds checkbox
 // state.enabled tracks current value
 ```
+
+### PadToggle
+
+Parallel checkboxes in **both** the User Settings panel and the Pad Wide Settings panel — matching how native settings (sticky chat, line numbers, etc.) work. The pad-wide value rides Etherpad's existing `padoptions` broadcast/persist rail, so changes propagate to every connected client and are remembered across reloads. The pad creator can `enforceSettings` to lock the user-side checkbox for everyone.
+
+Requires Etherpad with the `ep_*` padOptions passthrough patch (>= 2.7.4). On older cores the pad-wide column is hidden automatically and the user-side cookie toggle keeps working — plugins built on this helper run everywhere.
+
+```js
+const {padToggle} = require('ep_plugin_helpers');
+
+const t = padToggle({
+  pluginName: 'ep_myplugin',          // must match /^ep_[a-z0-9_]+$/
+  settingId: 'my-feature',            // → ids: options-my-feature, padsettings-options-my-feature
+  l10nId: 'ep_myplugin.myFeature',    // i18n key, html10n overwrites the fallback
+  defaultLabel: 'My feature',         // a11y fallback — rendered inside <label> so screen readers
+                                      // announce something before html10n loads
+  defaultEnabled: false,              // overridable via settings.json[pluginName].defaultEnabled
+});
+
+// Server-side hooks
+exports.loadSettings           = t.loadSettings;
+exports.clientVars             = t.clientVars;
+exports.eejsBlock_mySettings   = t.eejsBlock_mySettings;
+exports.eejsBlock_padSettings  = t.eejsBlock_padSettings;
+
+// Client-side hooks
+exports.postAceInit = (hook, ctx) => {
+  const state = t.init({
+    onChange: (enabled) => {
+      // fires on initial load AND whenever the effective value changes
+      enabled ? myFeature.enable() : myFeature.disable();
+    },
+  });
+  // state.getEnabled() returns the current effective value
+};
+exports.handleClientMessage_CLIENT_MESSAGE = t.handleClientMessage_CLIENT_MESSAGE;
+```
+
+The plugin's `ep.json` must list each hook on the right side:
+
+```json
+{
+  "hooks": {
+    "loadSettings": "ep_myplugin",
+    "clientVars": "ep_myplugin",
+    "eejsBlock_mySettings": "ep_myplugin",
+    "eejsBlock_padSettings": "ep_myplugin"
+  },
+  "client_hooks": {
+    "postAceInit": "ep_myplugin/static/js/index",
+    "handleClientMessage_CLIENT_MESSAGE": "ep_myplugin/static/js/index"
+  }
+}
+```
+
+**Effective value rules** (returned by `init`'s `onChange` and `getEnabled`):
+- `enforceSettings` on → use the pad-wide value
+- `enforceSettings` off → use the user cookie value, falling back to pad-wide, falling back to `defaultEnabled`
 
 ### Message Relay
 
@@ -245,6 +303,7 @@ Old function names still work as aliases:
 | `rawHTML` | `eejsBlock.raw` |
 | `settings` | `createSettingsRelay` |
 | `toggle` | `createSettingsToggle` |
+| `padToggle` | `createPadToggle` |
 | `messageRelay` | `createMessageRelay` |
 | `logger` | `createLogger` |
 
