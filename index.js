@@ -19,6 +19,12 @@ module.exports = {
   // Toggle — checkbox in settings panel with cookie persistence
   get toggle() { return require('./settings-toggle').toggle; },
 
+  // PadToggle — parallel User Settings + Pad Wide Settings checkboxes,
+  // matching native Etherpad behavior. Pad-wide value rides the existing
+  // padoptions broadcast/persist rail; degrades gracefully on cores that
+  // lack the ep_* passthrough patch (Etherpad < 2.7.4).
+  get padToggle() { return require('./pad-toggle').padToggle; },
+
   // Messages — intercept and relay real-time messages
   get messageRelay() { return require('./message-relay').messageRelay; },
 
