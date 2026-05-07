@@ -192,7 +192,9 @@ const {padToggle} = require('ep_plugin_helpers');
 const t = padToggle({
   pluginName: 'ep_myplugin',          // must match /^ep_[a-z0-9_]+$/
   settingId: 'my-feature',            // → ids: options-my-feature, padsettings-options-my-feature
-  l10nId: 'ep_myplugin.myFeature',    // i18n key (no hardcoded English label)
+  l10nId: 'ep_myplugin.myFeature',    // i18n key, html10n overwrites the fallback
+  defaultLabel: 'My feature',         // a11y fallback — rendered inside <label> so screen readers
+                                      // announce something before html10n loads
   defaultEnabled: false,              // overridable via settings.json[pluginName].defaultEnabled
 });
 

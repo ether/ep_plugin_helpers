@@ -26,7 +26,13 @@ const validateConfig = (config) => {
     throw new Error('padToggle requires settingId (string)');
   }
   if (!l10nId || typeof l10nId !== 'string') {
-    throw new Error('padToggle requires l10nId (string) — never hardcode a label');
+    throw new Error('padToggle requires l10nId (string) — i18n is mandatory');
+  }
+  // Client side does no rendering, but the same validation runs here so an
+  // author who forgets defaultLabel on the client gets the same loud error
+  // as on the server.
+  if (!config.defaultLabel || typeof config.defaultLabel !== 'string') {
+    throw new Error('padToggle requires defaultLabel (string) — a11y fallback for screen readers');
   }
   return {pluginName, settingId, l10nId, defaultEnabled: !!defaultEnabled};
 };

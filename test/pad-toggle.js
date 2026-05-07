@@ -7,6 +7,7 @@ const baseConfig = () => ({
   pluginName: 'ep_test',
   settingId: 'thing',
   l10nId: 'ep_test.thing',
+  defaultLabel: 'Show Thing',
 });
 
 describe('padToggle', () => {
@@ -20,11 +21,15 @@ describe('padToggle', () => {
           /pluginName must match/);
     });
 
-    it('throws when settingId or l10nId is missing', () => {
+    it('throws when settingId, l10nId, or defaultLabel is missing', () => {
       assert.throws(() => padToggle({...baseConfig(), settingId: ''}),
           /settingId/);
       assert.throws(() => padToggle({...baseConfig(), l10nId: ''}),
           /l10nId/);
+      assert.throws(() => padToggle({...baseConfig(), defaultLabel: ''}),
+          /defaultLabel/);
+      assert.throws(() => padToggle({...baseConfig(), defaultLabel: undefined}),
+          /defaultLabel/);
     });
 
     it('returns the full server hook surface for valid config', () => {
@@ -46,14 +51,31 @@ describe('padToggle', () => {
   });
 
   describe('eejsBlock_mySettings', () => {
-    it('emits a checkbox with namespaced id and data-l10n-id label', (done) => {
+    it('emits a checkbox with namespaced id, data-l10n-id, and label fallback', (done) => {
       const t = padToggle(baseConfig());
       const args = {content: ''};
       t.eejsBlock_mySettings('hook', args, () => {
         assert.match(args.content, /id="options-thing"/);
         assert.match(args.content, /data-l10n-id="ep_test\.thing"/);
-        // No hardcoded English fallback inside the label tag.
-        assert.match(args.content, /data-l10n-id="ep_test\.thing"><\/label>/);
+        // a11y fallback: <label> must contain the default text so screen
+        // readers announce something even if html10n hasn't loaded yet.
+        assert.match(args.content, /data-l10n-id="ep_test\.thing">Show Thing<\/label>/);
+        done();
+      });
+    });
+
+    it('HTML-escapes the defaultLabel and l10nId to prevent injection', (done) => {
+      const t = padToggle({
+        ...baseConfig(),
+        defaultLabel: 'A & B <script>',
+        l10nId: 'ep_test.thing"onerror',
+      });
+      const args = {content: ''};
+      t.eejsBlock_mySettings('hook', args, () => {
+        assert.ok(!args.content.includes('<script>'),
+            'raw <script> must not survive into rendered HTML');
+        assert.match(args.content, /A &amp; B &lt;script&gt;/);
+        assert.match(args.content, /data-l10n-id="ep_test\.thing&quot;onerror"/);
         done();
       });
     });

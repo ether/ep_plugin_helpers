@@ -26,11 +26,15 @@ try {
   padOptionsPluginPassthrough = caps && caps.padOptionsPluginPassthrough === true;
 } catch (_e) { /* older core — leave as false */ }
 
+const HTML_ESCAPE_RE = /[&<>"']/g;
+const HTML_ESCAPES = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'};
+const escapeHtml = (s) => String(s).replace(HTML_ESCAPE_RE, (c) => HTML_ESCAPES[c]);
+
 const validateConfig = (config) => {
   if (!config || typeof config !== 'object') {
     throw new Error('padToggle requires a config object');
   }
-  const {pluginName, settingId, l10nId, defaultEnabled = true} = config;
+  const {pluginName, settingId, l10nId, defaultLabel, defaultEnabled = true} = config;
   if (!PLUGIN_NAME_RE.test(pluginName || '')) {
     throw new Error(
         `padToggle pluginName must match /^ep_[a-z0-9_]+$/, got: ${pluginName}`);
@@ -39,19 +43,26 @@ const validateConfig = (config) => {
     throw new Error('padToggle requires settingId (string)');
   }
   if (!l10nId || typeof l10nId !== 'string') {
-    throw new Error('padToggle requires l10nId (string) — never hardcode a label');
+    throw new Error('padToggle requires l10nId (string) — i18n is mandatory');
   }
-  return {pluginName, settingId, l10nId, defaultEnabled: !!defaultEnabled};
+  if (!defaultLabel || typeof defaultLabel !== 'string') {
+    throw new Error(
+        'padToggle requires defaultLabel (string) — accessibility fallback ' +
+        'rendered inside <label> so screen readers announce something before ' +
+        'html10n loads. html10n overwrites it at runtime via data-l10n-id.');
+  }
+  return {pluginName, settingId, l10nId, defaultLabel, defaultEnabled: !!defaultEnabled};
 };
 
-const renderCheckbox = (settingId, l10nId, idPrefix) =>
+const renderCheckbox = (settingId, l10nId, defaultLabel, idPrefix) =>
   `<p>` +
     `<input type="checkbox" id="${idPrefix}options-${settingId}">` +
-    `<label for="${idPrefix}options-${settingId}" data-l10n-id="${l10nId}"></label>` +
+    `<label for="${idPrefix}options-${settingId}" ` +
+        `data-l10n-id="${escapeHtml(l10nId)}">${escapeHtml(defaultLabel)}</label>` +
   `</p>`;
 
 const padToggleServer = (rawConfig) => {
-  const {pluginName, settingId, l10nId, defaultEnabled} = validateConfig(rawConfig);
+  const {pluginName, settingId, l10nId, defaultLabel, defaultEnabled} = validateConfig(rawConfig);
   let cachedDefaultEnabled = defaultEnabled;
 
   const loadSettings = async (hookName, args) => {
@@ -84,13 +95,13 @@ const padToggleServer = (rawConfig) => {
   };
 
   const eejsBlock_mySettings = (hookName, args, cb) => {
-    args.content += renderCheckbox(settingId, l10nId, '');
+    args.content += renderCheckbox(settingId, l10nId, defaultLabel, '');
     return cb();
   };
 
   const eejsBlock_padSettings = (hookName, args, cb) => {
     if (!padOptionsPluginPassthrough) return cb();
-    args.content += renderCheckbox(settingId, l10nId, 'padsettings-');
+    args.content += renderCheckbox(settingId, l10nId, defaultLabel, 'padsettings-');
     return cb();
   };
 
