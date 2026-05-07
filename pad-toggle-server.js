@@ -64,10 +64,20 @@ const renderCheckbox = (settingId, l10nId, defaultLabel, idPrefix) =>
 const padToggleServer = (rawConfig) => {
   const {pluginName, settingId, l10nId, defaultLabel, defaultEnabled} = validateConfig(rawConfig);
   let cachedDefaultEnabled = defaultEnabled;
+  // Etherpad >= 2.7.4 introduced settings.enablePluginPadOptions as a runtime
+  // gate on the ep_* passthrough (default false per AGENTS.MD §52). We grab
+  // it from loadSettings so eejsBlock_padSettings + clientVars correctly
+  // no-op when an admin hasn't opted in, even though PluginCapabilities
+  // reports the patch is present in the core.
+  let runtimeFlagEnabled = false;
+
+  const isPadWideActive = () => padOptionsPluginPassthrough && runtimeFlagEnabled;
 
   const loadSettings = async (hookName, args) => {
-    const ps = (args && args.settings && args.settings[pluginName]) || {};
+    const root = (args && args.settings) || {};
+    const ps = root[pluginName] || {};
     if (typeof ps.defaultEnabled === 'boolean') cachedDefaultEnabled = ps.defaultEnabled;
+    runtimeFlagEnabled = root.enablePluginPadOptions === true;
   };
 
   const clientVars = async (hookName, ctx) => {
@@ -83,7 +93,11 @@ const padToggleServer = (rawConfig) => {
       ep_plugin_helpers: {
         padToggle: {
           [pluginName]: {
-            padWideSupported: padOptionsPluginPassthrough,
+            // True iff the running core has the patch AND the admin has
+            // opted in via settings.enablePluginPadOptions. Client-side
+            // init() reads this to decide whether to wire the pad-wide
+            // checkbox, log the degradation warning, etc.
+            padWideSupported: isPadWideActive(),
             settingId,
             l10nId,
             defaultEnabled: cachedDefaultEnabled,
@@ -100,7 +114,7 @@ const padToggleServer = (rawConfig) => {
   };
 
   const eejsBlock_padSettings = (hookName, args, cb) => {
-    if (!padOptionsPluginPassthrough) return cb();
+    if (!isPadWideActive()) return cb();
     args.content += renderCheckbox(settingId, l10nId, defaultLabel, 'padsettings-');
     return cb();
   };
