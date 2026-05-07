@@ -184,7 +184,14 @@ const state = myToggle.init(); // reads cookie, binds checkbox
 
 Parallel checkboxes in **both** the User Settings panel and the Pad Wide Settings panel — matching how native settings (sticky chat, line numbers, etc.) work. The pad-wide value rides Etherpad's existing `padoptions` broadcast/persist rail, so changes propagate to every connected client and are remembered across reloads. The pad creator can `enforceSettings` to lock the user-side checkbox for everyone.
 
-Requires Etherpad with the `ep_*` padOptions passthrough patch (>= 2.7.4). On older cores the pad-wide column is hidden automatically and the user-side cookie toggle keeps working — plugins built on this helper run everywhere.
+Requires Etherpad with the `ep_*` padOptions passthrough patch (>= 2.7.4) AND the runtime flag `settings.enablePluginPadOptions = true` in `settings.json` (default false). When either is missing the pad-wide column is hidden automatically and the user-side cookie toggle keeps working — plugins built on this helper run everywhere.
+
+```json
+// settings.json
+{
+  "enablePluginPadOptions": true
+}
+```
 
 ```js
 const {padToggle} = require('ep_plugin_helpers');

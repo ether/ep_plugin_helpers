@@ -94,6 +94,26 @@ describe('padToggle', () => {
         done();
       });
     });
+
+    it('is a no-op when settings.enablePluginPadOptions is missing/false', async () => {
+      // Even on a patched core, the runtime flag is opt-in (default false in
+      // Etherpad >= 2.7.4). loadSettings without the flag set must leave
+      // pad-wide rendering off.
+      const t = padToggle(baseConfig());
+      await t.loadSettings('h', {settings: {}}); // no enablePluginPadOptions
+      const args = {content: ''};
+      await new Promise((res) => t.eejsBlock_padSettings('h', args, res));
+      assert.strictEqual(args.content, '');
+    });
+
+    it('clientVars reports padWideSupported=false when the runtime flag is off', async () => {
+      const t = padToggle(baseConfig());
+      await t.loadSettings('h', {settings: {enablePluginPadOptions: false}});
+      const cv = await t.clientVars('h', {pad: null});
+      assert.strictEqual(
+          cv.ep_plugin_helpers.padToggle.ep_test.padWideSupported, false,
+          'capability flag in clientVars must reflect both core patch AND runtime flag');
+    });
   });
 
   describe('loadSettings', () => {
