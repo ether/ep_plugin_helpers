@@ -23,7 +23,11 @@ module.exports = {
   // matching native Etherpad behavior. Pad-wide value rides the existing
   // padoptions broadcast/persist rail; degrades gracefully on cores that
   // lack the ep_* passthrough patch (Etherpad < 2.7.4).
-  get padToggle() { return require('./pad-toggle').padToggle; },
+  //
+  // Server side ONLY here. Client code must import the sub-path
+  // 'ep_plugin_helpers/pad-toggle' directly to avoid pulling settings-toggle
+  // and other server-only modules into the client bundle.
+  get padToggle() { return require('./pad-toggle-server').padToggle; },
 
   // Messages — intercept and relay real-time messages
   get messageRelay() { return require('./message-relay').messageRelay; },

@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const {padToggle} = require('../pad-toggle');
+const {padToggle} = require('../pad-toggle-server');
 
 const baseConfig = () => ({
   pluginName: 'ep_test',
@@ -27,15 +27,21 @@ describe('padToggle', () => {
           /l10nId/);
     });
 
-    it('returns the full hook surface for valid config', () => {
+    it('returns the full server hook surface for valid config', () => {
       const t = padToggle(baseConfig());
       for (const k of [
         'loadSettings', 'clientVars',
         'eejsBlock_mySettings', 'eejsBlock_padSettings',
-        'init', 'handleClientMessage_CLIENT_MESSAGE',
       ]) {
         assert.strictEqual(typeof t[k], 'function', `missing hook: ${k}`);
       }
+    });
+
+    it('client sub-path exposes init + handleClientMessage_CLIENT_MESSAGE', () => {
+      const {padToggle: clientFactory} = require('../pad-toggle');
+      const t = clientFactory(baseConfig());
+      assert.strictEqual(typeof t.init, 'function');
+      assert.strictEqual(typeof t.handleClientMessage_CLIENT_MESSAGE, 'function');
     });
   });
 
@@ -123,9 +129,9 @@ describe('padToggle', () => {
   });
 
   describe('backwards-compat alias', () => {
-    it('createPadToggle still resolves', () => {
-      const {createPadToggle} = require('../pad-toggle');
-      assert.strictEqual(typeof createPadToggle, 'function');
+    it('createPadToggle resolves on both sub-paths', () => {
+      assert.strictEqual(typeof require('../pad-toggle-server').createPadToggle, 'function');
+      assert.strictEqual(typeof require('../pad-toggle').createPadToggle, 'function');
     });
   });
 });

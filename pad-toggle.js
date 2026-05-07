@@ -1,30 +1,19 @@
 'use strict';
 
-// padToggle — emit parallel checkboxes in the User Settings (mySettings) and
-// Pad Wide Settings (padSettings) panels, mirroring how native settings like
-// stickychat / lineNumbers / disablechat work. The pad-wide value rides the
-// existing padoptions COLLABROOM rail (the helper's value lives at
-// pad.padOptions[pluginName] = {enabled: bool}), so broadcast, persistence,
-// creator-only-write, and enforceSettings semantics all come for free —
-// provided Etherpad core ships the ep_* passthrough patch (since 2.7.4).
+// padToggle (client side) — wires up the parallel User Settings / Pad Wide
+// Settings checkboxes that pad-toggle-server.js renders. Reads the helper's
+// clientVars block (capability flag + initial pad-wide value), persists the
+// per-user choice in padcookie, and forwards pad-wide changes through the
+// native pad.changePadOption() flow so they ride the existing padoptions
+// COLLABROOM broadcast.
 //
-// On older cores (no PluginCapabilities module), the pad-wide block is a
-// no-op and the user-side cookie toggle still works. Plugins built on this
-// helper continue to function everywhere; only the pad-wide column is gone.
+// This file deliberately has no top-level requires that touch server-only
+// modules — esbuild bundles it into the browser pad bundle, and any
+// node-only path would break the client build.
 
 const PLUGIN_NAME_RE = /^ep_[a-z0-9_]+$/;
 
-let padOptionsPluginPassthrough = false;
-try {
-  // Server-only. Wrapped because the Settings module pulls in node deps
-  // (fs, path) that don't exist in the esbuild-bundled client. The require
-  // also fails on Etherpad versions before the passthrough patch shipped.
-  // eslint-disable-next-line global-require
-  const caps = require('ep_etherpad-lite/node/utils/PluginCapabilities');
-  padOptionsPluginPassthrough = caps && caps.padOptionsPluginPassthrough === true;
-} catch (_e) { /* older core or client bundle — leave as false */ }
-
-const padToggle = (config) => {
+const validateConfig = (config) => {
   if (!config || typeof config !== 'object') {
     throw new Error('padToggle requires a config object');
   }
@@ -39,64 +28,19 @@ const padToggle = (config) => {
   if (!l10nId || typeof l10nId !== 'string') {
     throw new Error('padToggle requires l10nId (string) — never hardcode a label');
   }
+  return {pluginName, settingId, l10nId, defaultEnabled: !!defaultEnabled};
+};
 
+const padToggleClient = (rawConfig) => {
+  const {pluginName, settingId, defaultEnabled} = validateConfig(rawConfig);
   const userCheckboxId = `options-${settingId}`;
   const padCheckboxId = `padsettings-options-${settingId}`;
-  let cachedDefaultEnabled = !!defaultEnabled;
-
-  // ---------- Server hooks ----------
-
-  const loadSettings = async (hookName, args) => {
-    const ps = (args && args.settings && args.settings[pluginName]) || {};
-    if (typeof ps.defaultEnabled === 'boolean') cachedDefaultEnabled = ps.defaultEnabled;
-  };
-
-  const clientVars = async (hookName, ctx) => {
-    let initialPadEnabled = cachedDefaultEnabled;
-    try {
-      const padSettings = ctx && ctx.pad && typeof ctx.pad.getPadSettings === 'function'
-        ? ctx.pad.getPadSettings() : null;
-      const stored = padSettings && padSettings[pluginName];
-      if (stored && typeof stored.enabled === 'boolean') initialPadEnabled = stored.enabled;
-    } catch (_e) { /* leave initialPadEnabled at instance default */ }
-
-    const helperBlock = {
-      [pluginName]: {
-        padWideSupported: padOptionsPluginPassthrough,
-        settingId,
-        l10nId,
-        defaultEnabled: cachedDefaultEnabled,
-        initialPadEnabled,
-      },
-    };
-    return {ep_plugin_helpers: {padToggle: helperBlock}};
-  };
-
-  const renderCheckbox = (idPrefix) =>
-    `<p>` +
-      `<input type="checkbox" id="${idPrefix}options-${settingId}">` +
-      `<label for="${idPrefix}options-${settingId}" data-l10n-id="${l10nId}"></label>` +
-    `</p>`;
-
-  const eejsBlock_mySettings = (hookName, args, cb) => {
-    args.content += renderCheckbox('');
-    return cb();
-  };
-
-  const eejsBlock_padSettings = (hookName, args, cb) => {
-    if (!padOptionsPluginPassthrough) return cb();
-    args.content += renderCheckbox('padsettings-');
-    return cb();
-  };
-
-  // ---------- Client-side state (closed over by init/handleClientMessage) ----------
 
   let onChangeCallback = () => {};
   let lastEffective = null;
 
   const getPad = () => {
     if (typeof window === 'undefined') return null;
-    // Try the AMD pad module first (preferred), then the global.
     try {
       // eslint-disable-next-line global-require
       const m = require('ep_etherpad-lite/static/js/pad');
@@ -148,12 +92,12 @@ const padToggle = (config) => {
   const getEffective = () => {
     if (isEnforced()) {
       const padVal = readPadValue();
-      return padVal != null ? padVal : cachedDefaultEnabled;
+      return padVal != null ? padVal : defaultEnabled;
     }
     const userVal = readUserValue();
     if (userVal != null) return userVal;
     const padVal = readPadValue();
-    return padVal != null ? padVal : cachedDefaultEnabled;
+    return padVal != null ? padVal : defaultEnabled;
   };
 
   const refreshUI = () => {
@@ -181,9 +125,6 @@ const padToggle = (config) => {
     const $u = window.$(`#${userCheckboxId}`);
     const $p = window.$(`#${padCheckboxId}`);
 
-    // User-side checkbox: cookie-backed, mirrors the effective value when not
-    // enforced. Disabled visually + functionally when the pad creator has
-    // turned on enforceSettings.
     if ($u.length) {
       $u.prop('checked', getEffective());
       $u.prop('disabled', isEnforced());
@@ -198,9 +139,6 @@ const padToggle = (config) => {
       });
     }
 
-    // Pad-wide checkbox: only present when the rendering hook ran (i.e. the
-    // server has the passthrough patch). changePadOption broadcasts and the
-    // local applyPadSettings updates pad.padOptions[pluginName] in-place.
     if ($p.length && pad && typeof pad.changePadOption === 'function') {
       const initial = readPadValue();
       if (initial != null) $p.prop('checked', initial);
@@ -210,9 +148,6 @@ const padToggle = (config) => {
         refreshUI();
       });
     } else if (!isSupportedClient()) {
-      // Surface the degraded state once per pad load so the operator notices
-      // when their core lacks the passthrough patch but plugin authors expect
-      // pad-wide behavior.
       if (typeof console !== 'undefined' && !init._warned) {
         console.warn(
             `[ep_plugin_helpers.padToggle ${pluginName}] pad-wide settings ` +
@@ -231,24 +166,17 @@ const padToggle = (config) => {
     };
   };
 
-  // Etherpad dispatches handleClientMessage_<type> for every incoming
-  // COLLABROOM message. For pad-wide changes, the outer type is
-  // CLIENT_MESSAGE and the inner payload.type is padoptions. Plugins
-  // re-export this hook so the helper can refresh local state when another
-  // user toggles the pad-wide value.
+  // Plugin re-exports this so the helper sees pad-wide broadcasts and
+  // refreshes local state when another user toggles the pad-wide checkbox.
+  // Etherpad dispatches handleClientMessage_<type> for every COLLABROOM
+  // message; for pad-wide changes the outer type is CLIENT_MESSAGE and the
+  // inner payload.type is padoptions.
   const handleClientMessage_CLIENT_MESSAGE = (hookName, ctx) => {
     if (!ctx || !ctx.payload) return;
     if (ctx.payload.type === 'padoptions') refreshUI();
   };
 
-  return {
-    loadSettings,
-    clientVars,
-    eejsBlock_mySettings,
-    eejsBlock_padSettings,
-    init,
-    handleClientMessage_CLIENT_MESSAGE,
-  };
+  return {init, handleClientMessage_CLIENT_MESSAGE};
 };
 
-module.exports = {padToggle, createPadToggle: padToggle};
+module.exports = {padToggle: padToggleClient, createPadToggle: padToggleClient};
