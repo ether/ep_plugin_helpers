@@ -32,6 +32,16 @@ const createLineAttribute = (config) => {
 
   const aceRegisterBlockElements = () => tags;
 
+  // Server-side counterpart of aceRegisterBlockElements. Etherpad core's
+  // import-side content collector keeps its own `_blockElems` set
+  // separate from the editor's, so plugins that want their custom block
+  // tags treated as block elements on import (so adjacent ones don't
+  // merge into a single pad line) need to register them on the server
+  // side too. A plugin that uses `lineAttribute({tags: [...]})` should
+  // re-export this hook from its `ep.json` under
+  // `"ccRegisterBlockElements"`.
+  const ccRegisterBlockElements = () => tags;
+
   const collectContentPre = (hookName, context, cb) => {
     const tname = context.tname;
     const lineAttributes = context.state.lineAttributes;
@@ -60,6 +70,7 @@ const createLineAttribute = (config) => {
     aceDomLineProcessLineAttributes,
     aceRegisterBlockElements,
     aceRegisterLineAttributes,
+    ccRegisterBlockElements,
     collectContentPre,
     collectContentPost,
   };
@@ -122,6 +133,16 @@ const createTagAttribute = (config) => {
 
   const aceRegisterBlockElements = () => tags;
 
+  // Server-side counterpart of aceRegisterBlockElements. Etherpad core's
+  // import-side content collector keeps its own `_blockElems` set
+  // separate from the editor's, so plugins that want their custom block
+  // tags treated as block elements on import (so adjacent ones don't
+  // merge into a single pad line) need to register them on the server
+  // side too. A plugin that uses `lineAttribute({tags: [...]})` should
+  // re-export this hook from its `ep.json` under
+  // `"ccRegisterBlockElements"`.
+  const ccRegisterBlockElements = () => tags;
+
   const collectContentPre = (hookName, context, cb) => {
     const tname = context.tname;
     if (tags.includes(tname)) {
@@ -138,6 +159,7 @@ const createTagAttribute = (config) => {
     aceAttribClasses,
     aceAttribsToClasses,
     aceRegisterBlockElements,
+    ccRegisterBlockElements,
     collectContentPre,
     collectContentPost,
   };
