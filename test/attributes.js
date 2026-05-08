@@ -56,6 +56,17 @@ describe('lineAttribute', () => {
     });
   });
 
+  describe('ccRegisterBlockElements', () => {
+    it('returns the tags array (server-side counterpart)', () => {
+      assert.deepStrictEqual(headings.ccRegisterBlockElements(), tags);
+    });
+
+    it('is exposed alongside aceRegisterBlockElements', () => {
+      assert.strictEqual(typeof headings.ccRegisterBlockElements, 'function');
+      assert.strictEqual(typeof headings.aceRegisterBlockElements, 'function');
+    });
+  });
+
   describe('collectContentPre', () => {
     it('sets line attribute for matching tag', () => {
       const state = {lineAttributes: {}};
@@ -195,6 +206,12 @@ describe('tagAttribute', () => {
   describe('aceRegisterBlockElements', () => {
     it('returns the tags array', () => {
       assert.deepStrictEqual(subSup.aceRegisterBlockElements(), ['sub', 'sup']);
+    });
+  });
+
+  describe('ccRegisterBlockElements', () => {
+    it('returns the tags array (server-side)', () => {
+      assert.deepStrictEqual(subSup.ccRegisterBlockElements(), ['sub', 'sup']);
     });
   });
 
