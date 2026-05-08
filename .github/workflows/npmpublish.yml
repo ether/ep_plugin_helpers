@@ -34,7 +34,10 @@ jobs:
       - uses: pnpm/action-setup@v6
         name: Install pnpm
         with:
-          version: 10
+          # No `version:` here — defer to packageManager in package.json so
+          # we don't get the "Multiple versions of pnpm specified" error
+          # when an upstream checkout (etherpad-lite) pins a different
+          # pnpm via packageManager. See pnpm/action-setup#225.
           run_install: false
       - name: Get pnpm store directory
         shell: bash
