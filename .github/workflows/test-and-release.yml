@@ -15,7 +15,7 @@ jobs:
           node-version: 20
       - uses: pnpm/action-setup@v6
         with:
-          version: 10
+          # No `version:` — defer to packageManager in package.json.
           run_install: false
       - name: Get pnpm store directory
         shell: bash
