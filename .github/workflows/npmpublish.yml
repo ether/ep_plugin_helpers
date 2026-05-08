@@ -1,3 +1,11 @@
+# This workflow will run tests using node and then publish a package to the npm registry when a release is created
+# For more information see: https://help.github.com/actions/language-and-framework-guides/publishing-nodejs-packages
+#
+# Publishing uses npm Trusted Publishing (OIDC) — no NPM_TOKEN secret is
+# required. Each package must have a trusted publisher configured on npmjs.com
+# pointing at this workflow file. See:
+# https://docs.npmjs.com/trusted-publishers
+
 name: Node.js Package
 
 on:
@@ -7,40 +15,107 @@ jobs:
   publish-npm:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      id-token: write
+      contents: write   # for the atomic version-bump push (branch + tag)
+      id-token: write   # for npm OIDC trusted publishing
     steps:
       - uses: actions/setup-node@v6
         with:
+          # OIDC trusted publishing needs npm >= 11.5.1, which requires
+          # Node >= 20.17.0. setup-node's `20` resolves to the latest
+          # 20.x, which satisfies that.
           node-version: 20
           registry-url: https://registry.npmjs.org/
       - name: Upgrade npm to >=11.5.1 (required for trusted publishing)
         run: npm install -g npm@latest
-      - uses: actions/checkout@v6
+      - name: Check out Etherpad core
+        uses: actions/checkout@v6
+        with:
+          repository: ether/etherpad-lite
+      - uses: pnpm/action-setup@v6
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v5
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      -
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - run: npm ci
-      - run: npm test
-      - name: Bump version (patch)
+      -
+        name: Bump version (patch)
+        id: bump
         run: |
           LATEST_TAG=$(git describe --tags --abbrev=0) || exit 1
           NEW_COMMITS=$(git rev-list --count "${LATEST_TAG}"..) || exit 1
-          [ "${NEW_COMMITS}" -gt 0 ] || exit 0
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          npm version patch
-          NEW_TAG="v$(node -p "require('./package.json').version")"
-          # Use --atomic so branch + tag succeed or fail together.
-          # If a concurrent run already pushed this tag, the push fails
-          # cleanly and the next run will retry.
-          git push --atomic origin "${GITHUB_REF_NAME}" "${NEW_TAG}"
-      - name: Publish to npm via OIDC
-        run: |
-          # Only publish if the version bump succeeded (tag was pushed)
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          PUBLISHED=$(npm view ep_plugin_helpers version 2>/dev/null || echo "none")
-          if [ "${CURRENT_VERSION}" = "${PUBLISHED}" ]; then
-            echo "Version ${CURRENT_VERSION} already published, skipping"
+          # No new commits since the last tag → nothing to publish.
+          # Setting `bumped=false` lets the publish step below skip
+          # itself instead of trying to republish the existing version
+          # (which fails with "cannot publish over previously published
+          # versions"). Only manual `gh workflow run` invocations on a
+          # tag-current branch hit this path; on:push always sees ≥1
+          # new commit because the push event is what triggered us.
+          if [ "${NEW_COMMITS}" -le 0 ]; then
+            echo "bumped=false" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
-          npm publish --provenance --access public
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          pnpm i --frozen-lockfile
+          # `pnpm version patch` bumps package.json, makes a commit, and creates
+          # a `v<new-version>` tag. Capture the new tag name from package.json
+          # rather than parsing pnpm's output, which has historically varied.
+          # Bump the patch component directly with Node. pnpm/action-setup@v6
+          # sometimes installs pnpm 11 pre-releases even when version: 10.x is
+          # requested (pnpm/action-setup#225); those pre-releases either skip
+          # the git commit/tag or reject --no-git-tag-version as unknown.
+          # Doing the bump in Node sidesteps both failure modes.
+          NEW_VERSION=$(node -e "const fs=require('fs');const p=require('./package.json');const v=p.version.split('.');v[2]=String(Number(v[2])+1);p.version=v.join('.');fs.writeFileSync('./package.json',JSON.stringify(p,null,2)+'\n');console.log(p.version);")
+          NEW_TAG="v${NEW_VERSION}"
+          git add package.json
+          git commit -m "${NEW_TAG}"
+          git tag -a "${NEW_TAG}" -m "${NEW_TAG}"
+          # CRITICAL: use --atomic so the branch update and the tag update
+          # succeed (or fail) as a single transaction on the server. The old
+          # `git push --follow-tags` was non-atomic per ref: if a concurrent
+          # publish run won the race, the branch fast-forward would be rejected
+          # but the tag push would still land — leaving a dangling tag with no
+          # matching commit on the branch. Subsequent runs would then forever
+          # try to bump to the same already-existing tag and fail with
+          # `tag 'vN+1' already exists`. With --atomic, a rejected branch push
+          # rejects the tag push too, and the next workflow tick can retry
+          # cleanly against the up-to-date refs.
+          git push --atomic origin "${GITHUB_REF_NAME}" "${NEW_TAG}"
+          echo "bumped=true" >> "${GITHUB_OUTPUT}"
+      # This is required if the package has a prepare script that uses something
+      # in dependencies or devDependencies.
+      -
+        if: steps.bump.outputs.bumped == 'true'
+        run: pnpm i
+      # `npm publish` must come after `git push` otherwise there is a race
+      # condition: If two PRs are merged back-to-back then master/main will be
+      # updated with the commits from the second PR before the first PR's
+      # workflow has a chance to push the commit generated by `npm version
+      # patch`. This causes the first PR's `git push` step to fail after the
+      # package has already been published, which in turn will cause all future
+      # workflow runs to fail because they will all attempt to use the same
+      # already-used version number. By running `npm publish` after `git push`,
+      # back-to-back merges will cause the first merge's workflow to fail but
+      # the second's will succeed.
+      #
+      # Use `npm publish` directly (not `pnpm publish`) because OIDC trusted
+      # publishing requires npm CLI >= 11.5.1 and `pnpm publish` shells out to
+      # whichever `npm` is on PATH; calling `npm` directly avoids any shim
+      # ambiguity.
+      - name: Publish to npm via OIDC
+        if: steps.bump.outputs.bumped == 'true'
+        run: npm publish --provenance --access public
