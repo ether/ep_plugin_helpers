@@ -290,6 +290,43 @@ log.info('loaded');
 log.warn('something');
 ```
 
+### `cssHighlights()` — paint Range-based decorations without mutating Ace's DOM
+
+Use cases: syntax highlighting, spell-check squiggles, find-and-replace highlights, lint indicators, "search-in-pad" UIs.
+
+The trap: any plugin that calls `splitText` / `insertBefore` / `innerHTML =` to inject decorative `<span>`s into a line div is mutating DOM that Etherpad's Ace owns. Ace tracks each line's text nodes, attribute spans, and `_magicdom_dirtiness.knownHTML`. Mutating that DOM mid-edit fights its bookkeeping — broken caret on active-line typing, broken changeset application from collaborators, stuck stale decorations.
+
+The fix: register character ranges with the browser's [CSS Custom Highlights API](https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API) and let the browser composite the paint via `::highlight()` CSS rules. **The DOM stays exactly as Ace wrote it** — Ace's bookkeeping never sees your decorations.
+
+```js
+// Client-side (static/js/index.js)
+const {createCssHighlights} = require('ep_plugin_helpers/css-highlights');
+
+const reg = createCssHighlights();
+
+// Whenever a line should re-paint (acePostWriteDomLineHTML, MutationObserver,
+// aceEditEvent, language change, …):
+reg.setLineRanges(lineEl, [
+  {start: 0,  end: 5,  cls: 'my-keyword'},
+  {start: 12, end: 18, cls: 'my-string'},
+]);
+
+// On a global state reset (e.g. user changed language):
+reg.clearAll();
+```
+
+```css
+/* static/css/editor.css — applied inside the inner ace iframe */
+::highlight(my-keyword) { color: #d73a49; font-weight: bold; }
+::highlight(my-string)  { color: #032f62; }
+```
+
+**Returns:** `setLineRanges(lineEl, ranges)`, `removeLineRanges(lineEl)`, `clearAll()`, plus `buildRange` / `buildSegments` exposed as pure helpers for unit testing without a browser window.
+
+Each instance owns its own Highlight registry — multiple plugins can use this helper side-by-side without colliding (as long as their `cls` names don't clash; namespacing like `myplugin-keyword` is recommended).
+
+`setLineRanges` no-ops gracefully on browsers that lack `CSS.highlights` (Chrome < 105, Firefox < 140, Safari < 17.2). The host editor still works; just no decoration paint.
+
 ## Client vs Server imports
 
 Etherpad bundles client-side JS with esbuild. To avoid pulling Node.js modules into the browser bundle:
