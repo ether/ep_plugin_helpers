@@ -245,6 +245,59 @@ The plugin's `ep.json` must list each hook on the right side:
 - `enforceSettings` on → use the pad-wide value
 - `enforceSettings` off → use the user cookie value, falling back to pad-wide, falling back to `defaultEnabled`
 
+### ToolbarSelect
+
+DRY up the toolbar `<select>`-change → ace edit → focus-restore boilerplate that plugins like `ep_font_color`, `ep_font_size`, and `ep_headings2` each implement by hand:
+
+```js
+// before — repeated in each plugin
+exports.postAceInit = (hookName, context) => {
+  const hs = $('#font-size, select.size-selection');
+  hs.on('change', function () {
+    const value = $(this).val();
+    const intValue = parseInt(value, 10);
+    if (!isNaN(intValue)) {
+      context.ace.callWithAce((ace) => {
+        ace.ace_doInsertsizes(intValue);
+      }, 'insertsize', true);
+      hs.val('dummy');
+      context.ace.focus();
+    }
+  });
+};
+```
+
+With this helper:
+
+```js
+// Client-only — import the sub-path directly so esbuild doesn't pull
+// any server-only deps into the pad bundle.
+const {toolbarSelect} = require('ep_plugin_helpers/toolbar-select');
+
+exports.postAceInit = (hookName, context) => {
+  toolbarSelect({
+    selector: '#font-size, select.size-selection',
+    context,
+    invoke: (ace, value) => ace.ace_doInsertsizes(value),
+    op: 'insertsize',
+  });
+};
+```
+
+**Config:**
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `selector` | yes | — | jQuery selector for the toolbar `<select>`. |
+| `context` | yes | — | The `context` argument from `postAceInit` — must expose `context.ace.callWithAce` and `context.ace.focus`. |
+| `invoke` | yes | — | `(ace, coercedValue) => void`. Runs inside `callWithAce` so the edit joins the undo stack. |
+| `op` | no | `'toolbarSelect'` | `callWithAce` label — useful for debugging the undo stack. |
+| `coerce` | no | `'int'` | One of `'int' \| 'number' \| 'string' \| 'identity'`, or a custom `(raw) => coerced \| null`. Returning `null` skips the edit but still restores focus. |
+| `resetValue` | no | `'dummy'` | Value to write back to the select after a successful edit, so picking the same option again still fires `change`. |
+| `onAfterChange` | no | — | `(coercedValue) => void`, called after focus is restored. Errors are swallowed and logged so a buggy callback can't break the editor. |
+
+Focus restoration runs unconditionally — even if `coerce` returned `null` — so an accidental pick on a non-numeric option leaves the user typing back in the pad, not on the toolbar control.
+
 ### Message Relay
 
 Intercept and relay real-time COLLABROOM messages.
