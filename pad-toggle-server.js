@@ -4,9 +4,9 @@
 // (mySettings) and Pad Wide Settings (padSettings) panels, mirroring native
 // Etherpad behavior. Pad-wide values ride the existing padoptions COLLABROOM
 // rail (stored at pad.padOptions[pluginName] = {enabled: bool}) when the core
-// has the ep_* passthrough patch (Etherpad >= 2.7.4); on older cores the
-// pad-wide block silently no-ops and the user-side cookie toggle alone still
-// works.
+// has the ep_* passthrough patch (Etherpad >= 3.0.0, PR #7698); on older
+// cores the pad-wide block silently no-ops and the user-side cookie toggle
+// alone still works.
 //
 // This module is intended for server-side import only. The companion
 // `pad-toggle.js` provides the client-side init/handleClientMessage hooks.
@@ -18,7 +18,7 @@ const PLUGIN_NAME_RE = /^ep_[a-z0-9_]+$/;
 
 let padOptionsPluginPassthrough = false;
 try {
-  // The require lands on a leaf module on patched cores (Etherpad >= 2.7.4)
+  // The require lands on a leaf module on patched cores (Etherpad >= 3.0.0)
   // and throws on older cores. Server-only: this file is never bundled for
   // the browser, so esbuild's static analysis does not run here.
   // eslint-disable-next-line global-require
@@ -64,7 +64,7 @@ const renderCheckbox = (settingId, l10nId, defaultLabel, idPrefix) =>
 const padToggleServer = (rawConfig) => {
   const {pluginName, settingId, l10nId, defaultLabel, defaultEnabled} = validateConfig(rawConfig);
   let cachedDefaultEnabled = defaultEnabled;
-  // Etherpad >= 2.7.4 introduced settings.enablePluginPadOptions as a runtime
+  // Etherpad >= 3.0.0 introduced settings.enablePluginPadOptions as a runtime
   // gate on the ep_* passthrough (default false per AGENTS.MD §52). We grab
   // it from loadSettings so eejsBlock_padSettings + clientVars correctly
   // no-op when an admin hasn't opted in, even though PluginCapabilities
@@ -98,6 +98,14 @@ const padToggleServer = (rawConfig) => {
             // init() reads this to decide whether to wire the pad-wide
             // checkbox, log the degradation warning, etc.
             padWideSupported: isPadWideActive(),
+            // Granular flags so the client's degradation warning can name
+            // the specific cause (missing patch vs. missing runtime flag)
+            // instead of guessing. Older client builds that don't read
+            // these still work — padWideSupported alone is sufficient
+            // for the gating logic; the warning just falls back to a
+            // generic line.
+            patchPresent: padOptionsPluginPassthrough,
+            runtimeEnabled: runtimeFlagEnabled,
             settingId,
             l10nId,
             defaultEnabled: cachedDefaultEnabled,

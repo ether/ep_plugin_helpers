@@ -160,10 +160,28 @@ const padSelectClient = (rawConfig) => {
       });
     } else if (!isSupportedClient()) {
       if (typeof console !== 'undefined' && !init._warned) {
+        // See pad-toggle.js for the rationale: distinguish missing patch
+        // (Etherpad < 3.0.0) from missing runtime flag
+        // (settings.enablePluginPadOptions). Falls back to a generic line
+        // on servers that don't ship the granular capability fields.
+        const b = block() || {};
+        let reason;
+        if (b.patchPresent != null || b.runtimeEnabled != null) {
+          if (!b.patchPresent) {
+            reason = 'server lacks ep_* passthrough patch (Etherpad < 3.0.0)';
+          } else if (!b.runtimeEnabled) {
+            reason = 'settings.enablePluginPadOptions is false — set to true ' +
+                'in settings.json to enable pad-wide options';
+          } else {
+            reason = 'pad-wide block not rendered (eejsBlock_padSettings missing)';
+          }
+        } else {
+          reason = 'server lacks ep_* passthrough patch (Etherpad < 3.0.0) ' +
+              'or runtime flag settings.enablePluginPadOptions is false';
+        }
         console.warn(
             `[ep_plugin_helpers.padSelect ${pluginName}] pad-wide settings ` +
-            'unavailable — server lacks ep_* passthrough patch (Etherpad < 2.7.4). ' +
-            'Per-user cookie picker still works.');
+            `unavailable — ${reason}. Per-user cookie picker still works.`);
         init._warned = true;
       }
     }

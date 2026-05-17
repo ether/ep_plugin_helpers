@@ -22,7 +22,7 @@ module.exports = {
   // PadToggle — parallel User Settings + Pad Wide Settings checkboxes,
   // matching native Etherpad behavior. Pad-wide value rides the existing
   // padoptions broadcast/persist rail; degrades gracefully on cores that
-  // lack the ep_* passthrough patch (Etherpad < 2.7.4).
+  // lack the ep_* passthrough patch (Etherpad < 3.0.0).
   //
   // Server side ONLY here. Client code must import the sub-path
   // 'ep_plugin_helpers/pad-toggle' directly to avoid pulling settings-toggle
