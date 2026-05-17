@@ -67,10 +67,14 @@ const padToggleClient = (rawConfig) => {
     return window.clientVars || (window.top && window.top.clientVars) || null;
   };
 
-  const isSupportedClient = () => {
+  const getCapabilityBlock = () => {
     const cv = getClientVars();
-    const block = cv && cv.ep_plugin_helpers && cv.ep_plugin_helpers.padToggle &&
-        cv.ep_plugin_helpers.padToggle[pluginName];
+    return (cv && cv.ep_plugin_helpers && cv.ep_plugin_helpers.padToggle &&
+        cv.ep_plugin_helpers.padToggle[pluginName]) || null;
+  };
+
+  const isSupportedClient = () => {
+    const block = getCapabilityBlock();
     return !!(block && block.padWideSupported);
   };
 
@@ -155,10 +159,32 @@ const padToggleClient = (rawConfig) => {
       });
     } else if (!isSupportedClient()) {
       if (typeof console !== 'undefined' && !init._warned) {
+        // The patch shipped in Etherpad 3.0.0 (PR #7698) and is enabled at
+        // runtime via `settings.enablePluginPadOptions` (default false per
+        // AGENTS.MD §52). Either condition can flip padWideSupported off
+        // — surface the specific cause so the admin knows whether to
+        // upgrade or to flip a settings flag. Falls back to a generic
+        // line on older servers that don't ship the capability fields.
+        const block = getCapabilityBlock();
+        const patchPresent = block && block.patchPresent === true;
+        const runtimeEnabled = block && block.runtimeEnabled === true;
+        let reason;
+        if (block && (block.patchPresent != null || block.runtimeEnabled != null)) {
+          if (!patchPresent) {
+            reason = 'server lacks ep_* passthrough patch (Etherpad < 3.0.0)';
+          } else if (!runtimeEnabled) {
+            reason = 'settings.enablePluginPadOptions is false — set to true ' +
+                'in settings.json to enable pad-wide options';
+          } else {
+            reason = 'pad-wide block not rendered (eejsBlock_padSettings missing)';
+          }
+        } else {
+          reason = 'server lacks ep_* passthrough patch (Etherpad < 3.0.0) ' +
+              'or runtime flag settings.enablePluginPadOptions is false';
+        }
         console.warn(
             `[ep_plugin_helpers.padToggle ${pluginName}] pad-wide settings ` +
-            'unavailable — server lacks ep_* passthrough patch (Etherpad < 2.7.4). ' +
-            'Per-user cookie toggle still works.');
+            `unavailable — ${reason}. Per-user cookie toggle still works.`);
         init._warned = true;
       }
     }

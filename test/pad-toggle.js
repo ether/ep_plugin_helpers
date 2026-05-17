@@ -97,7 +97,7 @@ describe('padToggle', () => {
 
     it('is a no-op when settings.enablePluginPadOptions is missing/false', async () => {
       // Even on a patched core, the runtime flag is opt-in (default false in
-      // Etherpad >= 2.7.4). loadSettings without the flag set must leave
+      // Etherpad >= 3.0.0). loadSettings without the flag set must leave
       // pad-wide rendering off.
       const t = padToggle(baseConfig());
       await t.loadSettings('h', {settings: {}}); // no enablePluginPadOptions
@@ -113,6 +113,22 @@ describe('padToggle', () => {
       assert.strictEqual(
           cv.ep_plugin_helpers.padToggle.ep_test.padWideSupported, false,
           'capability flag in clientVars must reflect both core patch AND runtime flag');
+    });
+
+    it('clientVars exposes patchPresent + runtimeEnabled so the client can name the cause', async () => {
+      // PR shifts the client-side degradation warning from a generic
+      // "patch missing" line to a specific cause. Locking in that the
+      // server publishes the two flags. In this test env the patched
+      // core is not installed, so patchPresent is false; runtimeEnabled
+      // reflects the loadSettings call below.
+      const t = padToggle(baseConfig());
+      await t.loadSettings('h', {settings: {enablePluginPadOptions: true}});
+      const cv = await t.clientVars('h', {pad: null});
+      const block = cv.ep_plugin_helpers.padToggle.ep_test;
+      assert.strictEqual(block.patchPresent, false,
+          'patchPresent must reflect PluginCapabilities, not be conflated with the runtime flag');
+      assert.strictEqual(block.runtimeEnabled, true,
+          'runtimeEnabled must reflect settings.enablePluginPadOptions exactly');
     });
   });
 

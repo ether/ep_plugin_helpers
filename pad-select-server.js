@@ -5,7 +5,7 @@
 // from a fixed list (e.g. indent size: 2 / 4, theme: light / dark, etc.).
 // Pad-wide values ride the existing padoptions COLLABROOM rail (stored at
 // pad.padOptions[pluginName] = {[settingId]: value}) when the core has the
-// ep_* passthrough patch (Etherpad >= 2.7.4) AND the admin opted in via
+// ep_* passthrough patch (Etherpad >= 3.0.0, PR #7698) AND the admin opted in via
 // settings.enablePluginPadOptions. Otherwise the pad-wide block silently
 // no-ops and the user-side cookie picker still works.
 //
@@ -112,6 +112,12 @@ const padSelectServer = (rawConfig) => {
           [pluginName]: {
             [settingId]: {
               padWideSupported: isPadWideActive(),
+              // Granular flags so the client's degradation warning can
+              // name the specific cause — missing patch (Etherpad <
+              // 3.0.0) vs. missing runtime flag (default false). See
+              // pad-toggle-server.js for the same rationale.
+              patchPresent: padOptionsPluginPassthrough,
+              runtimeEnabled: runtimeFlagEnabled,
               options,
               defaultValue: cachedDefault,
               initialPadValue,
