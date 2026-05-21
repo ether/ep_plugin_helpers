@@ -37,7 +37,7 @@
   "devDependencies": {
     "eslint": "^10.4.0",
     "eslint-config-etherpad": "^4.0.5",
-    "mocha": "^11.0.0",
+    "mocha": "^11.7.6",
     "typescript": "^6.0.3",
     "jsdom": "^29.1.1"
   }
