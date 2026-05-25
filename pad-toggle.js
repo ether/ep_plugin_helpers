@@ -160,11 +160,12 @@ const padToggleClient = (rawConfig) => {
     } else if (!isSupportedClient()) {
       if (typeof console !== 'undefined' && !init._warned) {
         // The patch shipped in Etherpad 3.0.0 (PR #7698) and is enabled at
-        // runtime via `settings.enablePluginPadOptions` (default false per
-        // AGENTS.MD §52). Either condition can flip padWideSupported off
-        // — surface the specific cause so the admin knows whether to
-        // upgrade or to flip a settings flag. Falls back to a generic
-        // line on older servers that don't ship the capability fields.
+        // runtime via `settings.enablePluginPadOptions` (default true on
+        // current cores; earlier 3.x releases shipped it default false).
+        // Either condition can flip padWideSupported off — surface the
+        // specific cause so the admin knows whether to upgrade or to flip
+        // a settings flag. Falls back to a generic line on older servers
+        // that don't ship the capability fields.
         const block = getCapabilityBlock();
         const patchPresent = block && block.patchPresent === true;
         const runtimeEnabled = block && block.runtimeEnabled === true;

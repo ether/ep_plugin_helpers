@@ -184,10 +184,11 @@ const state = myToggle.init(); // reads cookie, binds checkbox
 
 Parallel checkboxes in **both** the User Settings panel and the Pad Wide Settings panel — matching how native settings (sticky chat, line numbers, etc.) work. The pad-wide value rides Etherpad's existing `padoptions` broadcast/persist rail, so changes propagate to every connected client and are remembered across reloads. The pad creator can `enforceSettings` to lock the user-side checkbox for everyone.
 
-Requires Etherpad with the `ep_*` padOptions passthrough patch ([PR #7698](https://github.com/ether/etherpad/pull/7698), shipped in `>= 3.0.0`) AND the runtime flag `settings.enablePluginPadOptions = true` in `settings.json` (default false). When either is missing the pad-wide column is hidden automatically and the user-side cookie toggle keeps working — plugins built on this helper run everywhere. The console warning logged on degradation names the specific cause so an admin can tell whether to upgrade the core or to flip the runtime flag.
+Requires Etherpad with the `ep_*` padOptions passthrough patch ([PR #7698](https://github.com/ether/etherpad/pull/7698), shipped in `>= 3.0.0`) AND the runtime flag `settings.enablePluginPadOptions` not set to `false` (default `true` on current cores; earlier 3.x releases shipped it default `false` so operators on those versions need to flip it explicitly). When pad-wide is unavailable the column is hidden automatically and the user-side cookie toggle keeps working — plugins built on this helper run everywhere. The console warning logged on degradation names the specific cause so an admin can tell whether to upgrade the core or to flip the runtime flag.
 
 ```json
-// settings.json
+// settings.json — only needed on older 3.x cores that shipped this opt-in,
+// or to explicitly disable the passthrough on current cores.
 {
   "enablePluginPadOptions": true
 }

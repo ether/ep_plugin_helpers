@@ -65,10 +65,11 @@ const padToggleServer = (rawConfig) => {
   const {pluginName, settingId, l10nId, defaultLabel, defaultEnabled} = validateConfig(rawConfig);
   let cachedDefaultEnabled = defaultEnabled;
   // Etherpad >= 3.0.0 introduced settings.enablePluginPadOptions as a runtime
-  // gate on the ep_* passthrough (default false per AGENTS.MD §52). We grab
-  // it from loadSettings so eejsBlock_padSettings + clientVars correctly
-  // no-op when an admin hasn't opted in, even though PluginCapabilities
-  // reports the patch is present in the core.
+  // gate on the ep_* passthrough (default true since the flag-flip; older 3.x
+  // releases shipped with it default false). We grab it from loadSettings so
+  // eejsBlock_padSettings + clientVars correctly no-op when an admin has
+  // opted out, even though PluginCapabilities reports the patch is present
+  // in the core.
   let runtimeFlagEnabled = false;
 
   const isPadWideActive = () => padOptionsPluginPassthrough && runtimeFlagEnabled;
