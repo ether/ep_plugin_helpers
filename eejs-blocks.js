@@ -1,6 +1,6 @@
 'use strict';
 
-const eejs = require('ep_etherpad-lite/node/eejs/');
+const eejs = require('ep_etherpad-lite/node/eejs');
 const {createLogger} = require('./logger');
 
 const logger = createLogger('ep_plugin_helpers');

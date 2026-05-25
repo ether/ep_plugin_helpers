@@ -22,7 +22,7 @@ try {
   // and throws on older cores. Server-only: this file is never bundled for
   // the browser, so esbuild's static analysis does not run here.
   // eslint-disable-next-line global-require
-  const caps = require('ep_etherpad-lite/node/utils/PluginCapabilities');
+  const caps = require('ep_etherpad-lite/node/utils/PluginCapabilities.js');
   padOptionsPluginPassthrough = caps && caps.padOptionsPluginPassthrough === true;
 } catch (_e) { /* older core — leave as false */ }
 

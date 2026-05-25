@@ -9,7 +9,7 @@ const createLineAttributeExport = (config) => {
   const stylesForExport = () => exportStyles || '';
 
   const getLineHTMLForExport = async (hookName, context) => {
-    const Changeset = require('ep_etherpad-lite/static/js/Changeset');
+    const Changeset = require('ep_etherpad-lite/static/js/Changeset.js');
     let header = null;
     if (context.attribLine) {
       const opIter = Changeset.opIterator(context.attribLine);
@@ -47,7 +47,7 @@ const createInlineAttributeExport = (config) => {
   };
 
   const stylesForExport = exportCssFile
-    ? async () => require('ep_etherpad-lite/node/eejs/').require(exportCssFile)
+    ? async () => require('ep_etherpad-lite/node/eejs').require(exportCssFile)
     : () => '';
 
   const getLineHTMLForExport = exportDataAttr

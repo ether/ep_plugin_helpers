@@ -1,7 +1,7 @@
 'use strict';
 
-const eejs = require('ep_etherpad-lite/node/eejs/');
-const settings = require('ep_etherpad-lite/node/utils/Settings');
+const eejs = require('ep_etherpad-lite/node/eejs');
+const settings = require('ep_etherpad-lite/node/utils/Settings.js');
 
 const createSettingsToggle = (config) => {
   const {

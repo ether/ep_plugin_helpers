@@ -10,7 +10,7 @@ const createMessageRelay = (config) => {
     const message = data;
     if (action && message.action !== action) return;
 
-    const padMessageHandler = require('ep_etherpad-lite/node/handler/PadMessageHandler');
+    const padMessageHandler = require('ep_etherpad-lite/node/handler/PadMessageHandler.js');
     const payload = await buildPayload(message);
 
     const msg = {
