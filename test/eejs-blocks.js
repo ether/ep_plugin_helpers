@@ -6,10 +6,10 @@ const Module = require('module');
 // Stub out ep_etherpad-lite modules that eejs-blocks.js require()s so we can
 // load the helper without a full Etherpad runtime.
 const stubs = new Map([
-  ['ep_etherpad-lite/node/eejs/', {
+  ['ep_etherpad-lite/node/eejs', {
     require: (templatePath) => `<!--rendered:${templatePath}-->`,
   }],
-  ['ep_etherpad-lite/node_modules/log4js', {
+  ['log4js', {
     getLogger: () => {
       const calls = [];
       const logger = {
