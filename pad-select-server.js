@@ -114,9 +114,10 @@ const padSelectServer = (rawConfig) => {
               padWideSupported: isPadWideActive(),
               // Granular flags so the client's degradation warning can
               // name the specific cause — missing patch (Etherpad <
-              // 3.0.0) vs. explicit operator opt-out
-              // (settings.enablePluginPadOptions = false). See
-              // pad-toggle-server.js for the same rationale.
+              // 3.0.0) vs. runtime flag not enabled
+              // (settings.enablePluginPadOptions !== true; either absent
+              // on older 3.x cores or explicitly false on current ones).
+              // See pad-toggle-server.js for the same rationale.
               patchPresent: padOptionsPluginPassthrough,
               runtimeEnabled: runtimeFlagEnabled,
               options,
