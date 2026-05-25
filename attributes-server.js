@@ -9,7 +9,7 @@ const createLineAttributeExport = (config) => {
   const stylesForExport = () => exportStyles || '';
 
   const getLineHTMLForExport = async (hookName, context) => {
-    const Changeset = require('ep_etherpad-lite/static/js/Changeset.js');
+    const Changeset = require('ep_etherpad-lite/static/js/Changeset');
     let header = null;
     if (context.attribLine) {
       const opIter = Changeset.opIterator(context.attribLine);

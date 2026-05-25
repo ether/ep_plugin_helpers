@@ -16,7 +16,7 @@ const PLUGIN_NAME_RE = /^ep_[a-z0-9_]+$/;
 let padOptionsPluginPassthrough = false;
 try {
   // eslint-disable-next-line global-require
-  const caps = require('ep_etherpad-lite/node/utils/PluginCapabilities.js');
+  const caps = require('ep_etherpad-lite/node/utils/PluginCapabilities');
   padOptionsPluginPassthrough = caps && caps.padOptionsPluginPassthrough === true;
 } catch (_e) { /* older core — leave as false */ }
 
