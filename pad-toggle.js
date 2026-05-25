@@ -174,14 +174,15 @@ const padToggleClient = (rawConfig) => {
           if (!patchPresent) {
             reason = 'server lacks ep_* passthrough patch (Etherpad < 3.0.0)';
           } else if (!runtimeEnabled) {
-            reason = 'settings.enablePluginPadOptions is false — set to true ' +
-                'in settings.json to enable pad-wide options';
+            reason = 'settings.enablePluginPadOptions is not true (missing or ' +
+                'false) — set it to true in settings.json (top-level key) ' +
+                'to enable pad-wide options';
           } else {
             reason = 'pad-wide block not rendered (eejsBlock_padSettings missing)';
           }
         } else {
           reason = 'server lacks ep_* passthrough patch (Etherpad < 3.0.0) ' +
-              'or runtime flag settings.enablePluginPadOptions is false';
+              'or runtime flag settings.enablePluginPadOptions is not true';
         }
         console.warn(
             `[ep_plugin_helpers.padToggle ${pluginName}] pad-wide settings ` +
