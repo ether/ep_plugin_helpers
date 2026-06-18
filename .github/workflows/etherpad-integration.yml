@@ -31,12 +31,12 @@ jobs:
     name: smoke (etherpad@${{ matrix.etherpad-ref }})
     steps:
       - name: Check out this helper
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: plugin
 
       - name: Check out Etherpad core (${{ matrix.etherpad-ref }})
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ether/etherpad
           ref: ${{ matrix.etherpad-ref }}
