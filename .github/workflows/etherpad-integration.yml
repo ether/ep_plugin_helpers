@@ -42,7 +42,7 @@ jobs:
           ref: ${{ matrix.etherpad-ref }}
           path: etherpad
 
-      - uses: pnpm/action-setup@v6.0.9
+      - uses: pnpm/action-setup@v6.0.10
         name: Install pnpm
         with:
           version: 10
