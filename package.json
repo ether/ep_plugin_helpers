@@ -38,7 +38,7 @@
     "log4js": "^6.9.1"
   },
   "devDependencies": {
-    "eslint": "^10.9.0",
+    "eslint": "^10.9.1",
     "eslint-config-etherpad": "^4.0.5",
     "jsdom": "^30.0.1",
     "mocha": "^11.8.0",
