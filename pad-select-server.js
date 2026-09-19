@@ -11,6 +11,8 @@
 //
 // Server-side only. Companion `pad-select.js` provides the client init().
 
+const {mergeClientVars} = require('./client-vars');
+
 const PLUGIN_NAME_RE = /^ep_[a-z0-9_]+$/;
 
 let padOptionsPluginPassthrough = false;
@@ -81,8 +83,15 @@ const padSelectServer = (rawConfig) => {
   const {pluginName, settingId, options, defaultValue} = config;
   let cachedDefault = defaultValue;
   let runtimeFlagEnabled = false;
+  // settings.enablePadWideSettings gates the whole Pad Wide Settings panel in
+  // core's pad template — when it is off, eejsBlock_padSettings is never
+  // called, so there is nowhere to render the pad-wide dropdown regardless of
+  // the passthrough patch. Absent on cores that predate the flag, hence the
+  // `!== false` (treat missing as enabled) rather than `=== true`.
+  let padWidePanelEnabled = true;
 
-  const isPadWideActive = () => padOptionsPluginPassthrough && runtimeFlagEnabled;
+  const isPadWideActive = () =>
+    padOptionsPluginPassthrough && runtimeFlagEnabled && padWidePanelEnabled;
 
   const loadSettings = async (hookName, args) => {
     const root = (args && args.settings) || {};
@@ -92,6 +101,7 @@ const padSelectServer = (rawConfig) => {
       if (found) cachedDefault = found.value;
     }
     runtimeFlagEnabled = root.enablePluginPadOptions === true;
+    padWidePanelEnabled = root.enablePadWideSettings !== false;
   };
 
   const clientVars = async (hookName, ctx) => {
@@ -106,28 +116,27 @@ const padSelectServer = (rawConfig) => {
       }
     } catch (_e) { /* leave at instance default */ }
 
-    return {
-      ep_plugin_helpers: {
-        padSelect: {
-          [pluginName]: {
-            [settingId]: {
-              padWideSupported: isPadWideActive(),
-              // Granular flags so the client's degradation warning can
-              // name the specific cause — missing patch (Etherpad <
-              // 3.0.0) vs. runtime flag not enabled
-              // (settings.enablePluginPadOptions !== true; either absent
-              // on older 3.x cores or explicitly false on current ones).
-              // See pad-toggle-server.js for the same rationale.
-              patchPresent: padOptionsPluginPassthrough,
-              runtimeEnabled: runtimeFlagEnabled,
-              options,
-              defaultValue: cachedDefault,
-              initialPadValue,
-            },
-          },
-        },
-      },
-    };
+    // Merge rather than return a fresh `ep_plugin_helpers` object: core
+    // shallow-assigns each hook's return value, so a fresh object would wipe
+    // out the blocks published by every other helper-based plugin. See
+    // client-vars.js.
+    return mergeClientVars(ctx, ['padSelect', pluginName, settingId], {
+      padWideSupported: isPadWideActive(),
+      // Granular flags so the client's degradation warning can
+      // name the specific cause — missing patch (Etherpad <
+      // 3.0.0) vs. runtime flag not enabled
+      // (settings.enablePluginPadOptions !== true; either absent
+      // on older 3.x cores or explicitly false on current ones) vs.
+      // the Pad Wide Settings panel being disabled outright
+      // (settings.enablePadWideSettings === false).
+      // See pad-toggle-server.js for the same rationale.
+      patchPresent: padOptionsPluginPassthrough,
+      runtimeEnabled: runtimeFlagEnabled,
+      padWidePanelEnabled,
+      options,
+      defaultValue: cachedDefault,
+      initialPadValue,
+    });
   };
 
   const eejsBlock_mySettings = (hookName, args, cb) => {

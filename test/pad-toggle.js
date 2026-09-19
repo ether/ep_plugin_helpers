@@ -167,6 +167,30 @@ describe('padToggle', () => {
           cv.ep_plugin_helpers.padToggle.ep_test.padWideSupported, false);
     });
 
+    it('reports padWidePanelEnabled=false when settings.enablePadWideSettings is off', async () => {
+      // With the Pad Wide Settings panel disabled, core never calls
+      // eejsBlock_padSettings, so pad-wide really is unavailable and the
+      // client warning must be able to say so instead of blaming the
+      // passthrough patch.
+      const t = padToggle(baseConfig());
+      await t.loadSettings('h', {settings: {
+        enablePluginPadOptions: true, enablePadWideSettings: false,
+      }});
+      const cv = await t.clientVars('h', {pad: null});
+      const block = cv.ep_plugin_helpers.padToggle.ep_test;
+      assert.strictEqual(block.padWidePanelEnabled, false);
+      assert.strictEqual(block.padWideSupported, false);
+    });
+
+    it('treats a missing enablePadWideSettings key as enabled', async () => {
+      // Cores that predate the flag always render the panel.
+      const t = padToggle(baseConfig());
+      await t.loadSettings('h', {settings: {enablePluginPadOptions: true}});
+      const cv = await t.clientVars('h', {pad: null});
+      assert.strictEqual(
+          cv.ep_plugin_helpers.padToggle.ep_test.padWidePanelEnabled, true);
+    });
+
     it('reads stored pad-wide value from pad.getPadSettings()[pluginName]', async () => {
       const t = padToggle({...baseConfig(), defaultEnabled: false});
       const fakePad = {
@@ -183,6 +207,66 @@ describe('padToggle', () => {
       const cv = await t.clientVars('h', {pad: fakePad});
       assert.strictEqual(
           cv.ep_plugin_helpers.padToggle.ep_test.initialPadEnabled, true);
+    });
+  });
+
+  describe('client degradation warning', () => {
+    const {padToggle: clientFactory} = require('../pad-toggle');
+
+    // The client needs a window with a jQuery-ish $ and clientVars. Nothing
+    // is rendered here: zero-length selections force init() down the
+    // "pad-wide checkbox missing" branch, which is where the warning lives.
+    const withWindow = (block, fn) => {
+      const savedWindow = global.window;
+      const savedWarn = console.warn;
+      const warnings = [];
+      global.window = {
+        $: () => ({length: 0}),
+        clientVars: block
+          ? {ep_plugin_helpers: {padToggle: {ep_test: block}}}
+          : {},
+      };
+      console.warn = (msg) => warnings.push(String(msg));
+      try {
+        fn();
+      } finally {
+        console.warn = savedWarn;
+        if (savedWindow === undefined) delete global.window;
+        else global.window = savedWindow;
+      }
+      return warnings;
+    };
+
+    it('blames enablePadWideSettings when the pad-wide panel is disabled', () => {
+      const warnings = withWindow({
+        padWideSupported: false,
+        patchPresent: true,
+        runtimeEnabled: true,
+        padWidePanelEnabled: false,
+      }, () => clientFactory(baseConfig()).init());
+      assert.strictEqual(warnings.length, 1);
+      assert.match(warnings[0], /settings\.enablePadWideSettings is false/);
+    });
+
+    it('still blames the runtime flag when that is the actual cause', () => {
+      const warnings = withWindow({
+        padWideSupported: false,
+        patchPresent: true,
+        runtimeEnabled: false,
+        padWidePanelEnabled: true,
+      }, () => clientFactory(baseConfig()).init());
+      assert.strictEqual(warnings.length, 1);
+      assert.match(warnings[0], /settings\.enablePluginPadOptions is false/);
+    });
+
+    it('stays silent when pad-wide support is available', () => {
+      const warnings = withWindow({
+        padWideSupported: true,
+        patchPresent: true,
+        runtimeEnabled: true,
+        padWidePanelEnabled: true,
+      }, () => clientFactory(baseConfig()).init());
+      assert.deepStrictEqual(warnings, []);
     });
   });
 

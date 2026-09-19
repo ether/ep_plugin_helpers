@@ -172,6 +172,9 @@ const padSelectClient = (rawConfig) => {
           } else if (!b.runtimeEnabled) {
             reason = 'settings.enablePluginPadOptions is false — set to true ' +
                 'in settings.json to enable pad-wide options';
+          } else if (b.padWidePanelEnabled === false) {
+            reason = 'settings.enablePadWideSettings is false — the Pad Wide ' +
+                'Settings panel is disabled for this instance';
           } else {
             reason = 'pad-wide block not rendered (eejsBlock_padSettings missing)';
           }

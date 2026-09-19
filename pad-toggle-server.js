@@ -14,6 +14,8 @@
 // `pluginName`, `settingId`, `l10nId`, and `defaultEnabled` on both sides so
 // the checkbox ids and clientVars block line up.
 
+const {mergeClientVars} = require('./client-vars');
+
 const PLUGIN_NAME_RE = /^ep_[a-z0-9_]+$/;
 
 let padOptionsPluginPassthrough = false;
@@ -71,14 +73,22 @@ const padToggleServer = (rawConfig) => {
   // enabled (absent on pre-flip cores, or explicitly false), even though
   // PluginCapabilities reports the patch is present in the core.
   let runtimeFlagEnabled = false;
+  // settings.enablePadWideSettings gates the whole Pad Wide Settings panel in
+  // core's pad template — when it is off, eejsBlock_padSettings is never
+  // called, so there is nowhere to render the pad-wide checkbox regardless of
+  // the passthrough patch. Absent on cores that predate the flag, hence the
+  // `!== false` (treat missing as enabled) rather than `=== true`.
+  let padWidePanelEnabled = true;
 
-  const isPadWideActive = () => padOptionsPluginPassthrough && runtimeFlagEnabled;
+  const isPadWideActive = () =>
+    padOptionsPluginPassthrough && runtimeFlagEnabled && padWidePanelEnabled;
 
   const loadSettings = async (hookName, args) => {
     const root = (args && args.settings) || {};
     const ps = root[pluginName] || {};
     if (typeof ps.defaultEnabled === 'boolean') cachedDefaultEnabled = ps.defaultEnabled;
     runtimeFlagEnabled = root.enablePluginPadOptions === true;
+    padWidePanelEnabled = root.enablePadWideSettings !== false;
   };
 
   const clientVars = async (hookName, ctx) => {
@@ -90,31 +100,31 @@ const padToggleServer = (rawConfig) => {
       if (stored && typeof stored.enabled === 'boolean') initialPadEnabled = stored.enabled;
     } catch (_e) { /* leave initialPadEnabled at instance default */ }
 
-    return {
-      ep_plugin_helpers: {
-        padToggle: {
-          [pluginName]: {
-            // True iff the running core has the patch AND the admin has
-            // opted in via settings.enablePluginPadOptions. Client-side
-            // init() reads this to decide whether to wire the pad-wide
-            // checkbox, log the degradation warning, etc.
-            padWideSupported: isPadWideActive(),
-            // Granular flags so the client's degradation warning can name
-            // the specific cause (missing patch vs. missing runtime flag)
-            // instead of guessing. Older client builds that don't read
-            // these still work — padWideSupported alone is sufficient
-            // for the gating logic; the warning just falls back to a
-            // generic line.
-            patchPresent: padOptionsPluginPassthrough,
-            runtimeEnabled: runtimeFlagEnabled,
-            settingId,
-            l10nId,
-            defaultEnabled: cachedDefaultEnabled,
-            initialPadEnabled,
-          },
-        },
-      },
-    };
+    // Merge rather than return a fresh `ep_plugin_helpers` object: core
+    // shallow-assigns each hook's return value, so a fresh object would wipe
+    // out the blocks published by every other helper-based plugin. See
+    // client-vars.js.
+    return mergeClientVars(ctx, ['padToggle', pluginName], {
+      // True iff the running core has the patch AND the admin has
+      // opted in via settings.enablePluginPadOptions AND the Pad Wide
+      // Settings panel itself is enabled. Client-side init() reads this
+      // to decide whether to wire the pad-wide checkbox, log the
+      // degradation warning, etc.
+      padWideSupported: isPadWideActive(),
+      // Granular flags so the client's degradation warning can name
+      // the specific cause (missing patch vs. missing runtime flag vs.
+      // disabled pad-wide panel) instead of guessing. Older client
+      // builds that don't read these still work — padWideSupported
+      // alone is sufficient for the gating logic; the warning just
+      // falls back to a generic line.
+      patchPresent: padOptionsPluginPassthrough,
+      runtimeEnabled: runtimeFlagEnabled,
+      padWidePanelEnabled,
+      settingId,
+      l10nId,
+      defaultEnabled: cachedDefaultEnabled,
+      initialPadEnabled,
+    });
   };
 
   const eejsBlock_mySettings = (hookName, args, cb) => {

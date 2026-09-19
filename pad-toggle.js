@@ -169,6 +169,10 @@ const padToggleClient = (rawConfig) => {
         const block = getCapabilityBlock();
         const patchPresent = block && block.patchPresent === true;
         const runtimeEnabled = block && block.runtimeEnabled === true;
+        // Older servers don't publish padWidePanelEnabled; absent means the
+        // core predates settings.enablePadWideSettings, i.e. the panel is
+        // always rendered.
+        const panelEnabled = !block || block.padWidePanelEnabled !== false;
         let reason;
         if (block && (block.patchPresent != null || block.runtimeEnabled != null)) {
           if (!patchPresent) {
@@ -176,6 +180,9 @@ const padToggleClient = (rawConfig) => {
           } else if (!runtimeEnabled) {
             reason = 'settings.enablePluginPadOptions is false — set to true ' +
                 'in settings.json to enable pad-wide options';
+          } else if (!panelEnabled) {
+            reason = 'settings.enablePadWideSettings is false — the Pad Wide ' +
+                'Settings panel is disabled for this instance';
           } else {
             reason = 'pad-wide block not rendered (eejsBlock_padSettings missing)';
           }

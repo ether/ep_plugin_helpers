@@ -111,5 +111,22 @@ describe('padSelect', () => {
       assert.strictEqual(block.padWideSupported, false);
       assert.deepStrictEqual(block.options, [{value: 2, label: '2'}, {value: 4, label: '4'}]);
     });
+
+    it('reports padWidePanelEnabled from settings.enablePadWideSettings', async () => {
+      const off = padSelect(baseConfig());
+      await off.loadSettings('loadSettings', {settings: {
+        enablePluginPadOptions: true, enablePadWideSettings: false,
+      }});
+      const cvOff = await off.clientVars('clientVars', {pad: null});
+      assert.strictEqual(
+          cvOff.ep_plugin_helpers.padSelect.ep_test.size.padWidePanelEnabled, false);
+
+      // Cores that predate the flag always render the Pad Wide Settings panel.
+      const on = padSelect(baseConfig());
+      await on.loadSettings('loadSettings', {settings: {enablePluginPadOptions: true}});
+      const cvOn = await on.clientVars('clientVars', {pad: null});
+      assert.strictEqual(
+          cvOn.ep_plugin_helpers.padSelect.ep_test.size.padWidePanelEnabled, true);
+    });
   });
 });
