@@ -85,6 +85,30 @@ describe('clientVars namespace sharing', () => {
     assert.ok(clientVars.ep_plugin_helpers.padToggle.ep_alpha);
   });
 
+  it('stores hostile path segments as own properties, not on the prototype', async () => {
+    // padSelect accepts any non-empty string as a settingId, so a settingId
+    // of __proto__ must not retarget a prototype — the block would then be
+    // dropped when core JSON-serializes clientVars.
+    const s = padSelect({
+      pluginName: 'ep_alpha',
+      settingId: '__proto__',
+      l10nId: 'ep_alpha.proto',
+      defaultLabel: 'proto',
+      options: [{value: 'a', label: 'A'}, {value: 'b', label: 'B'}],
+      defaultValue: 'a',
+    });
+    const cv = await runCoreClientVarsMerge([s.clientVars]);
+    const plugin = cv.ep_plugin_helpers.padSelect.ep_alpha;
+
+    assert.ok(Object.prototype.hasOwnProperty.call(plugin, '__proto__'),
+        '__proto__ must be an own property, not a prototype swap');
+    assert.ok(JSON.parse(JSON.stringify(cv))
+        .ep_plugin_helpers.padSelect.ep_alpha.__proto__,
+    'the block must survive JSON serialization');
+    assert.strictEqual(Object.getPrototypeOf({}), Object.prototype,
+        'Object.prototype must not have been polluted');
+  });
+
   it('still returns a self-contained block when ctx has no clientVars', async () => {
     // Backwards compatibility: a core (or a test) that calls the hook without
     // exposing the live clientVars object must keep getting the full block.

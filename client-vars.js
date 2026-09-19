@@ -19,6 +19,20 @@
 
 const isObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
+// Path segments come from plugin config (padSelect accepts any non-empty
+// string as a settingId), so plain `node[key] = value` would let a settingId
+// of `__proto__` retarget the object's prototype instead of creating an own
+// property — the value would then vanish when core serializes clientVars.
+// defineProperty always creates an own, enumerable, JSON-visible property.
+const setOwn = (obj, key, value) => {
+  Object.defineProperty(obj, key, {
+    value, enumerable: true, configurable: true, writable: true,
+  });
+  return value;
+};
+
 /**
  * Merge a capability block into clientVars under
  * `ep_plugin_helpers.<path[0]>.<path[1]>...` without clobbering blocks
@@ -32,18 +46,18 @@ const isObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
  */
 const mergeClientVars = (ctx, path, value) => {
   const live = isObject(ctx) && isObject(ctx.clientVars) ? ctx.clientVars : null;
-  let root = live && live.ep_plugin_helpers;
+  let root = live && hasOwn(live, 'ep_plugin_helpers') ? live.ep_plugin_helpers : null;
   if (!isObject(root)) {
     root = {};
-    if (live) live.ep_plugin_helpers = root;
+    if (live) setOwn(live, 'ep_plugin_helpers', root);
   }
   let node = root;
   for (let i = 0; i < path.length - 1; i++) {
     const key = path[i];
-    if (!isObject(node[key])) node[key] = {};
-    node = node[key];
+    const next = hasOwn(node, key) ? node[key] : null;
+    node = isObject(next) ? next : setOwn(node, key, {});
   }
-  node[path[path.length - 1]] = value;
+  setOwn(node, path[path.length - 1], value);
   return {ep_plugin_helpers: root};
 };
 
