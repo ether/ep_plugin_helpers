@@ -17,10 +17,9 @@ const PLUGIN_NAME_RE = /^ep_[a-z0-9_]+$/;
 
 let padOptionsPluginPassthrough = false;
 try {
-  // eslint-disable-next-line global-require
   const caps = require('ep_etherpad-lite/node/utils/PluginCapabilities');
   padOptionsPluginPassthrough = caps && caps.padOptionsPluginPassthrough === true;
-} catch (_e) { /* older core — leave as false */ }
+} catch { /* older core — leave as false */ }
 
 const HTML_ESCAPE_RE = /[&<>"']/g;
 const HTML_ESCAPES = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'};
@@ -53,7 +52,7 @@ const validateConfig = (config) => {
       throw new Error('padSelect option entries must be {value, label, l10nId?}');
     }
   }
-  if (typeof defaultValue === 'undefined' || defaultValue === null) {
+  if (typeof defaultValue === 'undefined' || defaultValue == null) {
     throw new Error('padSelect requires defaultValue (must match one of options[].value)');
   }
   if (!options.some((o) => String(o.value) === String(defaultValue))) {
@@ -90,8 +89,8 @@ const padSelectServer = (rawConfig) => {
   // `!== false` (treat missing as enabled) rather than `=== true`.
   let padWidePanelEnabled = true;
 
-  const isPadWideActive = () =>
-    padOptionsPluginPassthrough && runtimeFlagEnabled && padWidePanelEnabled;
+  const isPadWideActive =
+      () => padOptionsPluginPassthrough && runtimeFlagEnabled && padWidePanelEnabled;
 
   const loadSettings = async (hookName, args) => {
     const root = (args && args.settings) || {};
@@ -114,7 +113,7 @@ const padSelectServer = (rawConfig) => {
         const found = options.find((o) => String(o.value) === String(stored[settingId]));
         if (found) initialPadValue = found.value;
       }
-    } catch (_e) { /* leave at instance default */ }
+    } catch { /* leave at instance default */ }
 
     // Merge rather than return a fresh `ep_plugin_helpers` object: core
     // shallow-assigns each hook's return value, so a fresh object would wipe

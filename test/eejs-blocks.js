@@ -74,7 +74,9 @@ describe('eejsBlock skip() safety', () => {
     // throw synchronously. The helper must swallow that throw so the pad
     // still loads.
     const block = template('boom.ejs', {
-      skip: () => { throw new TypeError("Cannot read properties of undefined (reading 'indexOf')"); },
+      skip: () => {
+        throw new TypeError("Cannot read properties of undefined (reading 'indexOf')");
+      },
     });
     const args = {content: ''};
     block('hookName', args, () => {

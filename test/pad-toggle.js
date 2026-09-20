@@ -35,8 +35,10 @@ describe('padToggle', () => {
     it('returns the full server hook surface for valid config', () => {
       const t = padToggle(baseConfig());
       for (const k of [
-        'loadSettings', 'clientVars',
-        'eejsBlock_mySettings', 'eejsBlock_padSettings',
+        'loadSettings',
+        'clientVars',
+        'eejsBlock_mySettings',
+        'eejsBlock_padSettings',
       ]) {
         assert.strictEqual(typeof t[k], 'function', `missing hook: ${k}`);
       }
@@ -102,7 +104,7 @@ describe('padToggle', () => {
       const t = padToggle(baseConfig());
       await t.loadSettings('h', {settings: {}}); // no enablePluginPadOptions
       const args = {content: ''};
-      await new Promise((res) => t.eejsBlock_padSettings('h', args, res));
+      await new Promise((resolve) => t.eejsBlock_padSettings('h', args, resolve));
       assert.strictEqual(args.content, '');
     });
 
@@ -115,21 +117,23 @@ describe('padToggle', () => {
           'capability flag in clientVars must reflect both core patch AND runtime flag');
     });
 
-    it('clientVars exposes patchPresent + runtimeEnabled so the client can name the cause', async () => {
-      // PR shifts the client-side degradation warning from a generic
-      // "patch missing" line to a specific cause. Locking in that the
-      // server publishes the two flags. In this test env the patched
-      // core is not installed, so patchPresent is false; runtimeEnabled
-      // reflects the loadSettings call below.
-      const t = padToggle(baseConfig());
-      await t.loadSettings('h', {settings: {enablePluginPadOptions: true}});
-      const cv = await t.clientVars('h', {pad: null});
-      const block = cv.ep_plugin_helpers.padToggle.ep_test;
-      assert.strictEqual(block.patchPresent, false,
-          'patchPresent must reflect PluginCapabilities, not be conflated with the runtime flag');
-      assert.strictEqual(block.runtimeEnabled, true,
-          'runtimeEnabled must reflect settings.enablePluginPadOptions exactly');
-    });
+    it('clientVars exposes patchPresent + runtimeEnabled so the client can name the cause',
+        async () => {
+          // PR shifts the client-side degradation warning from a generic
+          // "patch missing" line to a specific cause. Locking in that the
+          // server publishes the two flags. In this test env the patched
+          // core is not installed, so patchPresent is false; runtimeEnabled
+          // reflects the loadSettings call below.
+          const t = padToggle(baseConfig());
+          await t.loadSettings('h', {settings: {enablePluginPadOptions: true}});
+          const cv = await t.clientVars('h', {pad: null});
+          const block = cv.ep_plugin_helpers.padToggle.ep_test;
+          assert.strictEqual(block.patchPresent, false,
+              'patchPresent must reflect PluginCapabilities, not be conflated with ' +
+              'the runtime flag');
+          assert.strictEqual(block.runtimeEnabled, true,
+              'runtimeEnabled must reflect settings.enablePluginPadOptions exactly');
+        });
   });
 
   describe('loadSettings', () => {

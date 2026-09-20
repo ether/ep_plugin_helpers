@@ -234,7 +234,9 @@ describe('tagAttribute', () => {
 
 describe('backwards compatibility', () => {
   it('old names still work', () => {
-    const {createLineAttribute, createInlineAttribute, createTagAttribute} = require('../attributes');
+    const {
+      createLineAttribute, createInlineAttribute, createTagAttribute,
+    } = require('../attributes');
     assert.strictEqual(typeof createLineAttribute, 'function');
     assert.strictEqual(typeof createInlineAttribute, 'function');
     assert.strictEqual(typeof createTagAttribute, 'function');

@@ -23,10 +23,9 @@ try {
   // The require lands on a leaf module on patched cores (Etherpad >= 3.0.0)
   // and throws on older cores. Server-only: this file is never bundled for
   // the browser, so esbuild's static analysis does not run here.
-  // eslint-disable-next-line global-require
   const caps = require('ep_etherpad-lite/node/utils/PluginCapabilities');
   padOptionsPluginPassthrough = caps && caps.padOptionsPluginPassthrough === true;
-} catch (_e) { /* older core — leave as false */ }
+} catch { /* older core — leave as false */ }
 
 const HTML_ESCAPE_RE = /[&<>"']/g;
 const HTML_ESCAPES = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'};
@@ -56,12 +55,11 @@ const validateConfig = (config) => {
   return {pluginName, settingId, l10nId, defaultLabel, defaultEnabled: !!defaultEnabled};
 };
 
-const renderCheckbox = (settingId, l10nId, defaultLabel, idPrefix) =>
-  `<p>` +
+const renderCheckbox = (settingId, l10nId, defaultLabel, idPrefix) => '<p>' +
     `<input type="checkbox" id="${idPrefix}options-${settingId}">` +
     `<label for="${idPrefix}options-${settingId}" ` +
         `data-l10n-id="${escapeHtml(l10nId)}">${escapeHtml(defaultLabel)}</label>` +
-  `</p>`;
+  '</p>';
 
 const padToggleServer = (rawConfig) => {
   const {pluginName, settingId, l10nId, defaultLabel, defaultEnabled} = validateConfig(rawConfig);
@@ -80,8 +78,8 @@ const padToggleServer = (rawConfig) => {
   // `!== false` (treat missing as enabled) rather than `=== true`.
   let padWidePanelEnabled = true;
 
-  const isPadWideActive = () =>
-    padOptionsPluginPassthrough && runtimeFlagEnabled && padWidePanelEnabled;
+  const isPadWideActive =
+      () => padOptionsPluginPassthrough && runtimeFlagEnabled && padWidePanelEnabled;
 
   const loadSettings = async (hookName, args) => {
     const root = (args && args.settings) || {};
@@ -98,7 +96,7 @@ const padToggleServer = (rawConfig) => {
         ? ctx.pad.getPadSettings() : null;
       const stored = padSettings && padSettings[pluginName];
       if (stored && typeof stored.enabled === 'boolean') initialPadEnabled = stored.enabled;
-    } catch (_e) { /* leave initialPadEnabled at instance default */ }
+    } catch { /* leave initialPadEnabled at instance default */ }
 
     // Merge rather than return a fresh `ep_plugin_helpers` object: core
     // shallow-assigns each hook's return value, so a fresh object would wipe

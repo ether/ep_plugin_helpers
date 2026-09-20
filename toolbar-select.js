@@ -63,14 +63,18 @@ const validateConfig = (config) => {
 // the edit but still restores focus.
 const resolveCoerce = (coerce) => {
   if (typeof coerce === 'function') return coerce;
-  if (coerce === 'int') return (raw) => {
-    const n = parseInt(raw, 10);
-    return Number.isNaN(n) ? null : n;
-  };
-  if (coerce === 'number') return (raw) => {
-    const n = Number(raw);
-    return Number.isNaN(n) ? null : n;
-  };
+  if (coerce === 'int') {
+    return (raw) => {
+      const n = parseInt(raw, 10);
+      return Number.isNaN(n) ? null : n;
+    };
+  }
+  if (coerce === 'number') {
+    return (raw) => {
+      const n = Number(raw);
+      return Number.isNaN(n) ? null : n;
+    };
+  }
   if (coerce === 'string') return (raw) => (raw == null || raw === '') ? null : String(raw);
   // 'identity'
   return (raw) => (raw == null || raw === '') ? null : raw;
@@ -105,7 +109,6 @@ const toolbarSelect = (rawConfig) => {
 
     if (cfg.onAfterChange) {
       try { cfg.onAfterChange(value); } catch (e) {
-        // eslint-disable-next-line no-console
         if (typeof console !== 'undefined') console.error('toolbarSelect onAfterChange threw', e);
       }
     }
