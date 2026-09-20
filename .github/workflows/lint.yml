@@ -17,7 +17,9 @@ jobs:
       - uses: pnpm/action-setup@v6.1.0
         name: Install pnpm
         with:
-          version: 10
+          # No `version:` — defer to packageManager in package.json, as the
+          # other workflows in this repo do. Pinning a version here conflicts
+          # with it and the action refuses to run.
           run_install: false
       - name: Get pnpm store directory
         shell: bash
