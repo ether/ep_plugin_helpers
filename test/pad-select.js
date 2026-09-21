@@ -45,7 +45,8 @@ describe('padSelect', () => {
     });
 
     it('throws when an option entry is malformed', () => {
-      assert.throws(() => padSelect({...baseConfig(), options: [{value: 1}, {value: 2, label: '2'}]}),
+      assert.throws(
+          () => padSelect({...baseConfig(), options: [{value: 1}, {value: 2, label: '2'}]}),
           /option entries/);
     });
 
@@ -59,8 +60,10 @@ describe('padSelect', () => {
     it('returns the server hook surface for valid config', () => {
       const s = padSelect(baseConfig());
       for (const k of [
-        'loadSettings', 'clientVars',
-        'eejsBlock_mySettings', 'eejsBlock_padSettings',
+        'loadSettings',
+        'clientVars',
+        'eejsBlock_mySettings',
+        'eejsBlock_padSettings',
       ]) {
         assert.strictEqual(typeof s[k], 'function', `missing hook: ${k}`);
       }
@@ -79,11 +82,12 @@ describe('padSelect', () => {
       const s = padSelect(baseConfig());
       await s.loadSettings('loadSettings', {settings: {}});
       let html = '';
-      await new Promise((r) => s.eejsBlock_mySettings('eejsBlock_mySettings',
-          {content: ''}, () => r()).then ? Promise.resolve() : null);
+      await new Promise((resolve) => s.eejsBlock_mySettings('eejsBlock_mySettings',
+          {content: ''}, () => resolve()).then ? Promise.resolve() : null);
       // Helper hooks aren't awaitable in our pattern; collect via direct call.
       const args = {content: ''};
-      await new Promise((r) => s.eejsBlock_mySettings('eejsBlock_mySettings', args, () => r()));
+      await new Promise(
+          (resolve) => s.eejsBlock_mySettings('eejsBlock_mySettings', args, () => resolve()));
       html = args.content;
       assert.match(html, /<select id="options-size">/);
       assert.match(html, /<option value="2"[^>]* selected[^>]*>2<\/option>/);
@@ -95,7 +99,8 @@ describe('padSelect', () => {
       const s = padSelect(baseConfig());
       await s.loadSettings('loadSettings', {settings: {ep_test: {size: 4}}});
       const args = {content: ''};
-      await new Promise((r) => s.eejsBlock_mySettings('eejsBlock_mySettings', args, () => r()));
+      await new Promise(
+          (resolve) => s.eejsBlock_mySettings('eejsBlock_mySettings', args, () => resolve()));
       assert.match(args.content, /<option value="4"[^>]* selected[^>]*>4<\/option>/);
     });
   });

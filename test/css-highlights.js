@@ -75,7 +75,9 @@ describe('cssHighlights', () => {
   describe('createCssHighlights', () => {
     it('exposes setLineRanges / removeLineRanges / clearAll / buildRange / buildSegments', () => {
       const reg = createCssHighlights();
-      for (const k of ['setLineRanges', 'removeLineRanges', 'clearAll', 'buildRange', 'buildSegments']) {
+      const keys =
+          ['setLineRanges', 'removeLineRanges', 'clearAll', 'buildRange', 'buildSegments'];
+      for (const k of keys) {
         assert.strictEqual(typeof reg[k], 'function', `missing ${k}`);
       }
     });

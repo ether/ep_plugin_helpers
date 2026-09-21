@@ -83,7 +83,7 @@ const buildRange = (doc, segs, start, end) => {
   try {
     range.setStart(startNode, startOff);
     range.setEnd(endNode, endOff);
-  } catch (_e) {
+  } catch {
     return null;
   }
   return range;
@@ -110,7 +110,7 @@ const createCssHighlights = () => {
       const h = classHighlights.get(cls);
       if (!h) continue;
       for (const r of arr) {
-        try { h.delete(r); } catch (_e) { /* stale range */ }
+        try { h.delete(r); } catch { /* stale range */ }
       }
     }
     lineRanges.delete(lineEl);
@@ -146,7 +146,7 @@ const createCssHighlights = () => {
 
   const clearAll = () => {
     for (const h of classHighlights.values()) {
-      try { h.clear(); } catch (_e) { /* ignore */ }
+      try { h.clear(); } catch { /* ignore */ }
     }
   };
 

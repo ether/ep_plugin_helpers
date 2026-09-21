@@ -6,6 +6,9 @@ permissions:
   id-token: write
 
 jobs:
+  lint:
+    uses: ./.github/workflows/lint.yml
+    secrets: inherit
   test:
     runs-on: ubuntu-latest
     steps:
@@ -30,7 +33,9 @@ jobs:
       - run: pnpm test
   release:
     if: ${{ github.ref == 'refs/heads/main' }}
-    needs: test
+    needs:
+      - lint
+      - test
     permissions:
       contents: write
       id-token: write

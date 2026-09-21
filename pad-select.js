@@ -25,7 +25,7 @@ const validateConfig = (config) => {
   if (!Array.isArray(options) || options.length < 2) {
     throw new Error('padSelect requires options array of at least 2 entries');
   }
-  if (typeof defaultValue === 'undefined' || defaultValue === null) {
+  if (typeof defaultValue === 'undefined' || defaultValue == null) {
     throw new Error('padSelect requires defaultValue');
   }
   return {pluginName, settingId, options, defaultValue};
@@ -42,18 +42,16 @@ const padSelectClient = (rawConfig) => {
   const getPad = () => {
     if (typeof window === 'undefined') return null;
     try {
-      // eslint-disable-next-line global-require
       const m = require('ep_etherpad-lite/static/js/pad');
       if (m && m.pad) return m.pad;
-    } catch (_e) { /* fall through */ }
+    } catch { /* fall through */ }
     return window.pad || (window.top && window.top.pad) || null;
   };
 
   const getCookie = () => {
     try {
-      // eslint-disable-next-line global-require
       return require('ep_etherpad-lite/static/js/pad_cookie').padcookie;
-    } catch (_e) { return null; }
+    } catch { return null; }
   };
 
   const getClientVars = () => {

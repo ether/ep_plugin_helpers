@@ -53,10 +53,10 @@ const createInlineAttributeExport = (config) => {
   const getLineHTMLForExport = exportDataAttr
     ? async (hookName, context) => {
       const dataPattern = new RegExp(
-        `${exportDataAttr}=["|']([0-9a-zA-Z]+)["|']`, 'gi'
+          `${exportDataAttr}=["|']([0-9a-zA-Z]+)["|']`, 'gi',
       );
       context.lineContent = context.lineContent.replace(
-        dataPattern, `class="${attr}:$1"`
+          dataPattern, `class="${attr}:$1"`,
       );
     }
     : undefined;

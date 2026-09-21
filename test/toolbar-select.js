@@ -9,18 +9,18 @@ const makeFakeSelect = (initialValue = '12') => {
   let value = initialValue;
   let changeHandler = null;
   const $el = {
-    on(event, handler) {
+    on: (event, handler) => {
       if (event !== 'change') throw new Error(`unexpected event: ${event}`);
       changeHandler = handler;
       return $el;
     },
-    val(v) {
+    val: (v) => {
       if (v === undefined) return value;
       value = v;
       return $el;
     },
     // Test-only helper: simulate the user picking an option.
-    _fire(newValue) {
+    _fire: (newValue) => {
       value = newValue;
       if (changeHandler) changeHandler.call({_isThis: true, _$: $el});
     },
@@ -53,8 +53,11 @@ const makeContext = () => {
     get focusCount() { return focused; },
     ctx: {
       ace: {
-        callWithAce(fn, op, fast) { calls.push({type: 'callWithAce', op, fast}); fn(aceObj); },
-        focus() { focused++; },
+        callWithAce: (fn, op, fast) => {
+          calls.push({type: 'callWithAce', op, fast});
+          fn(aceObj);
+        },
+        focus: () => { focused++; },
       },
     },
   };
@@ -115,11 +118,11 @@ describe('toolbarSelect', () => {
   });
 
   describe('change behaviour', () => {
-    it("calls invoke with coerced int, resets select, and focuses editor", () => {
+    it('calls invoke with coerced int, resets select, and focuses editor', () => {
       const $sel = makeFakeSelect('initial');
       const restore = installJqueryStub($sel);
       const {ctx, calls} = makeContext();
-      let captured = ctx; // alias for clarity
+      const captured = ctx; // alias for clarity
 
       toolbarSelect({
         selector: '#font-size',
