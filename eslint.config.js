@@ -33,6 +33,7 @@ module.exports = [
       'pad-select.js',
       'pad-toggle.js',
       'settings-toggle.js',
+      'socket-origin.js',
       'toolbar-select.js',
     ],
     languageOptions: {

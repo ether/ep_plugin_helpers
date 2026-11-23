@@ -36,6 +36,17 @@ module.exports = {
   get hideCSS() { return require('./hide-elements').hideCSS; },
   get removeElement() { return require('./hide-elements').removeElement; },
 
+  // Socket origin — apply core's pad socket origin check to a plugin's own
+  // socket.io namespace. Server side only; the client half is the sub-path
+  // 'ep_plugin_helpers/socket-origin'.
+  get guardSocketNamespace() { return require('./socket-origin-server').guardSocketNamespace; },
+  get socketOriginMiddleware() {
+    return require('./socket-origin-server').socketOriginMiddleware;
+  },
+  get trustsAmbientCredentials() {
+    return require('./socket-origin-server').trustsAmbientCredentials;
+  },
+
   // Logger
   get logger() { return require('./logger').logger; },
 };

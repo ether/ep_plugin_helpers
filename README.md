@@ -336,6 +336,57 @@ exports.postAceInit = removeElement('li[data-key="clearauthorship"]', {
 });
 ```
 
+### Socket Origin
+
+For plugins that open their **own socket.io namespace** (`io.of('/my_plugin')`). Etherpad core (`>= 3.3.21`) checks that the page which opened a pad socket is an Etherpad page before that socket may use the browser's cookies (author token, HTTP API session, login session). Core only does that for its own namespace. This helper applies the same check, core's `padOriginMiddleware`, to yours, so your namespace follows the same rules and the same settings (`socketIo.crossOriginPadSockets`, `socketIo.padAllowedOrigins`, `socketIo.allowedOrigins`, `trustProxy`, `publicURL`).
+
+Server side:
+
+```js
+const {guardSocketNamespace, trustsAmbientCredentials} = require('ep_plugin_helpers');
+
+exports.socketio = (hookName, {io}) => {
+  // Install it before anything else that reads cookies or the session.
+  const nsp = guardSocketNamespace(io.of('/my_plugin'));
+  nsp.on('connection', (socket) => {
+    // false when the connection did not come from an Etherpad page: core has
+    // already removed its Cookie header and session.
+    if (!trustsAmbientCredentials(socket)) { /* treat as anonymous */ }
+  });
+};
+```
+
+Client side (pass the token core issues, so the check does not depend on the `Host` header):
+
+```js
+const {padSocketAuth} = require('ep_plugin_helpers/socket-origin');
+
+const socket = io(`${location.origin}/my_plugin`, {
+  path: `${baseURL}socket.io`,
+  auth: padSocketAuth(baseURL), // Etherpad base URL, e.g. pad.baseURL or '/'
+});
+```
+
+What a handshake gets:
+
+| Handshake | Result |
+|-----------|--------|
+| From an Etherpad page with the token (`padSocketAuth`) | Cookies and session kept. Works behind a proxy that rewrites `Host`, in embeds and on plain http. |
+| Same-origin `Sec-Fetch-Site`, no `Origin` header (CLI/bot clients), or `Origin` matching `Host` / `X-Forwarded-Host` (with `trustProxy`) / `publicURL` / the allowlists | Cookies and session kept. |
+| Anything else | `crossOriginPadSockets: "anonymous"` (default): connects with no cookies or session. `"reject"`: refused with `origin_not_allowed`. `"allow"`: no check. |
+
+API:
+
+- `guardSocketNamespace(nsp)` — installs `socketOriginMiddleware` on a namespace and returns it.
+- `socketOriginMiddleware(socket, next)` — the middleware itself. Loads core's express session first if nothing has (the token is bound to the login session), then calls core's `padOriginMiddleware`.
+- `trustsAmbientCredentials(socket)` — `false` when the check decided the socket must not use the browser's cookies.
+- `hasCoreSocketOriginCheck()` (sub-path `ep_plugin_helpers/socket-origin-server`) — whether the running core provides the check.
+- `padSocketAuth(baseUrl)` (client, sub-path `ep_plugin_helpers/socket-origin`) — a socket.io `auth` function that fetches `GET <baseUrl>pad-socket-token` from the page's own origin on every (re)connect and sends `{padSocketToken}`. Resolves to `{}` if the token can't be fetched.
+
+Use both halves. Plugin namespaces usually share the browser's connection with core's pad socket, and core removes the cookies from the shared handshake request when it does not trust a handshake. A namespace that sends no token can therefore lose the cookies for the pad socket as well, for example behind a proxy that rewrites `Host`.
+
+On cores older than 3.3.21 there is no check to apply: the middleware lets every handshake through unchanged and logs one warning per namespace, and the client's token request just fails quietly. Adopting the helper never breaks a plugin on an older core.
+
 ### Logger
 
 ```js
@@ -389,6 +440,7 @@ Etherpad bundles client-side JS with esbuild. To avoid pulling Node.js modules i
 
 - **Client-side code** → `require('ep_plugin_helpers/attributes')`
 - **Server-side code** → `require('ep_plugin_helpers')` or `require('ep_plugin_helpers/attributes-server')`
+- Socket origin: client `require('ep_plugin_helpers/socket-origin')`, server `require('ep_plugin_helpers/socket-origin-server')` (or the package index)
 
 ## Backwards Compatibility
 
