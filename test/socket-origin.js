@@ -58,16 +58,26 @@ describe('socketOrigin (server)', () => {
     assert.strictEqual(seen, 'token=t.abc');
   });
 
-  it('still runs the origin check when the session middleware throws', async () => {
-    let checked = false;
-    server._setCoreForTests({
-      sessionMiddleware: () => { throw new Error('db down'); },
-      originMiddleware: (socket, next) => { checked = true; next(); },
+  for (const [label, sessionMiddleware] of [
+    ['throws', () => { throw new Error('db down'); }],
+    ['calls back with an error', (req, res, next) => next(new Error('db down'))],
+  ]) {
+    it(`fails the handshake, like core, when the session middleware ${label}`, async () => {
+      let checked = false;
+      let calls = 0;
+      server._setCoreForTests({
+        sessionMiddleware,
+        originMiddleware: (socket, next) => { checked = true; next(); },
+      });
+      const err = await new Promise((resolve) => {
+        server.socketOriginMiddleware(fakeSocket(), (e) => { calls++; resolve(e); });
+      });
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.match(String(err && err.message), /db down/);
+      assert.strictEqual(checked, false);
+      assert.strictEqual(calls, 1);
     });
-    const err = await run(fakeSocket());
-    assert.strictEqual(err, undefined);
-    assert.strictEqual(checked, true);
-  });
+  }
 
   it('passes core\'s rejection through to socket.io', async () => {
     const rejection = Object.assign(new Error('origin not allowed'),

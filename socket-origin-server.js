@@ -77,12 +77,24 @@ const loadSession = (core, socket, next) => {
     // via a query parameter (same fallback core uses).
     req.headers.cookie = socket.handshake.query.cookie;
   }
+  // Same as core's own namespaces: a session that cannot be loaded fails the
+  // handshake. Log it. An exception thrown after the callback ran comes from
+  // later middleware, so it is not reported as a session failure.
+  let called = false;
+  const done = (err) => {
+    if (called) return;
+    called = true;
+    if (err) {
+      log.warn(`Failed to load the session for socket.io namespace ${
+        (socket.nsp && socket.nsp.name) || 'unknown'}: ${(err && err.message) || err}`);
+    }
+    next(err || undefined);
+  };
   try {
-    // Never fail the handshake because the session could not be loaded; the
-    // origin check below still runs.
-    sessionMiddleware(req, {}, () => next());
-  } catch {
-    next();
+    sessionMiddleware(req, {}, done);
+  } catch (err) {
+    if (called) throw err;
+    done(err);
   }
 };
 
