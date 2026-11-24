@@ -149,7 +149,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: etherpad-log-${{ matrix.etherpad-ref }}
+          name: etherpad-log-${{ matrix.etherpad-ref }}-node${{ matrix.node }}
           path: /tmp/etherpad.log
           retention-days: 7
 
