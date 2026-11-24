@@ -22,13 +22,19 @@ jobs:
       # compatibility picture in the check output, not just the first red.
       fail-fast: false
       matrix:
-        etherpad-ref:
-          # Oldest release we want to stay compatible with (v2.6.1 is the
-          # last tag as of 2026-04; ships the core CJS/ESM interop bug).
-          - v2.6.1
-          # Current development tip (has the #7421 compat shim).
-          - develop
-    name: smoke (etherpad@${{ matrix.etherpad-ref }})
+        include:
+          # Oldest release we want to stay compatible with (v2.6.1 ships the
+          # core CJS/ESM interop bug). Its core floor allows Node 22, the
+          # plugin engines.node floor.
+          - etherpad-ref: v2.6.1
+            node: '22'
+          # Current development tip (has the #7421 compat shim) on the
+          # Node lines current core supports.
+          - etherpad-ref: develop
+            node: '24'
+          - etherpad-ref: develop
+            node: '26'
+    name: smoke (etherpad@${{ matrix.etherpad-ref }} / Node ${{ matrix.node }})
     steps:
       - name: Check out this helper
         uses: actions/checkout@v7
@@ -50,7 +56,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 25
+          node-version: ${{ matrix.node }}
           cache: pnpm
           cache-dependency-path: etherpad/pnpm-lock.yaml
 
@@ -143,7 +149,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: etherpad-log-${{ matrix.etherpad-ref }}
+          name: etherpad-log-${{ matrix.etherpad-ref }}-node${{ matrix.node }}
           path: /tmp/etherpad.log
           retention-days: 7
 

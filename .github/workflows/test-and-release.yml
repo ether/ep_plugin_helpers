@@ -10,12 +10,17 @@ jobs:
     uses: ./.github/workflows/lint.yml
     secrets: inherit
   test:
+    name: test (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24', '26']
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 25
+          node-version: ${{ matrix.node }}
       - uses: pnpm/action-setup@v6.1.1
         with:
           # No `version:` — defer to packageManager in package.json.
